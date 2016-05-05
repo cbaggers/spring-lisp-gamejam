@@ -22,6 +22,12 @@
     (setf *blend* (make-blending-params))
     (setf *dust-tex* (load-texture "star_02.png"))
     (setf *particle-system* (make-particle-system))
+    (populate-velocities-using-func
+	 (lambda (ptr x y)
+	   (declare (ignorable x y))
+	   (setf (cffi:mem-aref ptr :float 0) (- (random 0.01) 0.005)
+		 (cffi:mem-aref ptr :float 1) (- (random 0.01) 0.005)
+		 (cffi:mem-aref ptr :float 2) 0s0)))
     (reset-game 0 0)))
 
 ;;----------------------------------------------------------------------
@@ -232,11 +238,11 @@
 ;;----------------------------------------------------------------------
 
 (defun-g actor-vert ((vert g-pt) &uniform (pos :vec2) (rot :mat3)
-		      (cam cam-g :ubo) (rad :float))
+		     (cam cam-g :ubo) (rad :float))
   (let* ((vpos (* rot (* (pos vert) rad))))
-    (values (cam-it (+ (v! vpos 1)
-		       (v! pos 0 0))
-		    cam)
+    (values (v! (cam-it (+ vpos (v! pos 0))
+			cam)
+		1)
 	    (tex vert))))
 
 (defun-g actor-frag ((tc :vec2) &uniform (tex :sampler-2d) (tint :vec3))
@@ -293,7 +299,7 @@
 	  (tex vert))) ;; (- (tex vert) (v! 0.5 0.5))
 
 (defun-g sky-frag ((tc :vec2) &uniform (tex :sampler-2d) (cam cam-g :ubo))
-  (* (texture tex tc) 0.6))
+  (* (texture tex tc) 0.65))
 
 (def-g-> sky-pipeline ()
   #'sky-vert #'sky-frag)
@@ -424,8 +430,7 @@
 	   (setf pos (v2:*s (v2:normalize pos) (- (- field-size 0.1s0)))))))))
 
 (defun update ()
-  (setf (cam-pos *camera*) (v2:/s (actoroid-position *player*)
-				  (zoom *camera*)))
+  (setf (cam-pos *camera*) (actoroid-position *player*))
   (update-player)
   (update-rocks)
   (update-particles *particle-system*)

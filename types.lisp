@@ -93,10 +93,8 @@
 	  value)))
 
 (defmacro-g cam-it (pos cam)
-  `(- (* ,pos
-	 (v! (/ (/ (v:y (cam-g-size ,cam)) (v:x (cam-g-size ,cam)))
+  `(* (- ,pos (v! (cam-g-position ,cam) 0))
+      (v! (/ (/ (v:y (cam-g-size ,cam)) (v:x (cam-g-size ,cam)))
 		(cam-g-zoom ,cam))
 	     (/ 1 (cam-g-zoom ,cam))
-	     1
-	     1))
-      (v! (cam-g-position ,cam) 0 0)))
+	     1)))

@@ -8,8 +8,8 @@
 ;; "rings_rgb.png"
 
 (defparameter *zoom-levels*
-  '((10s0 12s0 14s0 18s0)
-    (26s0 42s0 74s0 192s0)
+  '((15s0 17s0 24s0 30s0)
+    (140s0 200s0 300s0 400s0)
     (400s0)))
 
 (defparameter *player-journey*
@@ -24,17 +24,19 @@
 		 :radius 8 :mass 28))
     ;; level 1
     ((:small-rocky-planet "rocky_planet_rgb.png"
-			  :radius 16 :mass 40)
+			  :radius 16 :mass 400)
      (:medium-rocky-planet "rocky_planet_rgb.png"
-			   :radius 32 :mass 80)
+			   :radius 32 :mass 800)
      (:gas-planet "jovian_rgb.png"
-		  :radius 64 :mass 160)
+		  :radius 64 :mass 1600)
      (:gas-giant "jovian_rgb.png"
-		 :radius 192 :mass 480))
+		 :radius 192 :mass 4800))
 
     ;; level 2
     ((:small-star "sun_rgb.png"
-		  :radius 400 :mass 900))
+		  :radius 400 :mass 90000)
+     (:large-star "sun_rgb.png"
+		  :radius 600 :mass 180000))
 
     ;; level 3
 

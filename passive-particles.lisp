@@ -77,7 +77,7 @@
 	  (setf *starting-positions* (across-c-ptr #'init arr)))))
     t))
 
-(defun populate-using-func (ptr-x-y-func)
+(defun populate-velocities-using-func (ptr-x-y-func)
   (with-c-array (arr (make-c-array nil :dimensions *particle-resolution*
 				   :element-type :vec3))
     (across-c-ptr ptr-x-y-func arr)
@@ -132,9 +132,10 @@
 	 (pos-index (v!int (int (floor (v:z vert))) (int (floor (v:w vert)))))
 	 (particle-position (texel-fetch positions pos-index 0))
 	 (corner-pos (v! (v:x vert) (v:y vert))))
-    (values (cam-it (+ (v! (* corner-pos particle-scale) 0.8 1)
-		       (* (v! (s~ particle-position :xy) 0 0) 10))
-		    cam)
+    (values (v! (cam-it (+ (v! (* corner-pos particle-scale) 0.8)
+			   (* (v! (s~ particle-position :xy) 0) 10))
+			cam)
+		1)
     	    (* (+ corner-pos (v! 1 1)) 0.5)
 	    (v! 1 0 1 1))))
 
