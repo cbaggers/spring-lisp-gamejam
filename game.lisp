@@ -7,26 +7,24 @@
 (defvar *misc-draw* nil)
 (defvar *blend* nil)
 (defvar *sky-tex* nil)
+(defvar *dust-tex* nil)
 (defvar *sky-quad* nil)
+(defvar *particle-system* nil)
 
 (defun init ()
-  (skitter:listen-to (lambda (x y) (mouse-listener x y)) (skitter:mouse 0) :pos)
-  (setf *sky-tex* (load-texture "tempSky.jpg"))
-  (setf *sky-quad* (make-gpu-quad))
-  (setf *camera* (make-camera))
-  (setf *player* (make-player))
-  (setf *blend* (make-blending-params))
-  (reset-player))
+  (unless *sky-tex*
+    (init-particles)
+    (skitter:listen-to (lambda (x y) (mouse-listener x y)) (skitter:mouse 0) :pos)
+    (setf *sky-tex* (load-texture "space_bg.png"))
+    (setf *sky-quad* (make-gpu-quad))
+    (setf *camera* (make-camera))
+    (setf *player* (make-player))
+    (setf *blend* (make-blending-params))
+    (setf *dust-tex* (load-texture "star_02.png"))
+    (setf *particle-system* (make-particle-system))
+    (reset-game 0 0)))
 
 ;;----------------------------------------------------------------------
-
-(defun make-player ()
-  (dbind (name tex &key radius mass) (player-stats 0 0)
-    (declare (ignore name))
-    (%make-player
-     :texture (load-texture tex)
-     :radius radius
-     :mass mass)))
 
 (defun reset-game (&optional level stage)
   (let ((level (or level (game-state-level *game-state*)))
@@ -131,7 +129,8 @@
 (defun setup-level (level)
   (declare (optimize debug))
   ;; {TODO} do something with field size
-  (let ((space-field-size (elt *space-field-sizes* level)))
+  (let ((space-field-size (elt *space-field-sizes* level))
+	(rand-rotation (random (* +pi+ 2))))
     ;; add new bodies from spec
     ;; {TODO} for now just dump *rocks*, later animate this
     (setf *rocks*
@@ -149,8 +148,8 @@
 			      (random (* +pi+ 2)))
 		   :velocity (rotate-v2
 			      (v! 0 (parse-speed speed))
-			      (random (* +pi+ 2)))
-		   :rotation (or rotation 0s0)
+			      rand-rotation)
+		   :rotation (- (or rotation 0s0) rand-rotation)
 		   :mass mass
 		   :radius radius)))))))
 
@@ -205,7 +204,6 @@
 
 (defun bump (player)
   (when (<= (actoroid-invincible-for-seconds player) 0s0)
-    (print "*bump*")
     (setf (actoroid-invincible-for-seconds player) 3s0)))
 
 (defparameter *game-state* (make-game-state))
@@ -230,18 +228,6 @@
 		   (+ start-zoom
 		      (* zoom-change (easing-f:out-bounce %progress%)))))))))))
 
-
-
-;;----------------------------------------------------------------------
-
-(defmacro-g cam-it (pos cam)
-  `(- (* ,pos
-	 (v! (/ (/ (v:y (cam-g-size ,cam)) (v:x (cam-g-size ,cam)))
-		(cam-g-zoom ,cam))
-	     (/ 1 (cam-g-zoom ,cam))
-	     1
-	     1))
-      (v! (cam-g-position ,cam) 0 0)))
 
 ;;----------------------------------------------------------------------
 
@@ -303,13 +289,11 @@
 ;;----------------------------------------------------------------------
 
 (defun-g sky-vert ((vert g-pt) &uniform (cam cam-g :ubo) (player-pos :vec2))
-  (let ((zoom-factor (- (cam-g-zoom cam) 8)))
-    (values (v! (s~ (pos vert) :xy) 0.1 1.0)
-	    (- (* (tex vert) zoom-factor)
-	       (* (v! 0.5 0.5) zoom-factor)))))
+  (values (v! (s~ (pos vert) :xy) 0.99 1.0)
+	  (tex vert))) ;; (- (tex vert) (v! 0.5 0.5))
 
 (defun-g sky-frag ((tc :vec2) &uniform (tex :sampler-2d) (cam cam-g :ubo))
-  (texture tex tc))
+  (* (texture tex tc) 0.6))
 
 (def-g-> sky-pipeline ()
   #'sky-vert #'sky-frag)
@@ -376,8 +360,8 @@
       (setf *rocks* (remove rock *rocks*))
       (push (cons rock (rotate-v2
 			(v2:- o
-			      (v2:*s (actor-offset stick-to rock) 0.2)
-			      (v2:*s (actor-offset player rock) 0.2))
+			      (v2:*s (actor-offset stick-to rock) 0.05)
+			      (v2:*s (actor-offset player rock) 0.05))
 			(- (actoroid-rotation player))))
 	    stuck))
     (maybe-goto-next-stage player *game-state*)))
@@ -421,6 +405,7 @@
   (with-blending *blend*
     (with-viewport (camera-viewport *camera*)
       (draw-sky)
+      (draw-passive-particles *particle-system* *camera* *dust-tex*)
       (draw-actor *player*)
       (loop :for a :in *rocks* :do (draw-actor a))
       (loop :for a :in *misc-draw* :do (draw-actor a))
@@ -428,20 +413,22 @@
   (swap))
 
 (defun update-rocks ()
-  (loop :for r :in *rocks* :do
-     (symbol-macrolet ((pos (actoroid-position r))
-		       (vel (actoroid-velocity r)))
-       (setf pos (v2:+ pos vel))
-       (decf (actoroid-invincible-for-seconds r)
-	     (/ 1s0 60s0))
-       (when (> (v2:length pos) 40.0)
-	 (setf pos (v2:*s (v2:normalize pos) -39.9))))))
+  (let ((field-size (field-size)))
+    (loop :for r :in *rocks* :do
+       (symbol-macrolet ((pos (actoroid-position r))
+			 (vel (actoroid-velocity r)))
+	 (setf pos (v2:+ pos vel))
+	 (decf (actoroid-invincible-for-seconds r)
+	       (/ 1s0 60s0))
+	 (when (> (v2:length pos) field-size)
+	   (setf pos (v2:*s (v2:normalize pos) (- (- field-size 0.1s0)))))))))
 
 (defun update ()
   (setf (cam-pos *camera*) (v2:/s (actoroid-position *player*)
 				  (zoom *camera*)))
   (update-player)
   (update-rocks)
+  (update-particles *particle-system*)
   (ttm:update))
 
 (let ((running nil))
@@ -454,6 +441,7 @@
 				     (seconds (/ 1.0 60.0))))
 		      (repl-stepper (temporal-functions:make-stepper
 				     (seconds (/ 1.0 10.0)))))
+		  (init)
 		  (loop :while (and running
 				    (not (shutting-down-p))
 				    (if for-frames (>= (decf for-frames) 0) t))

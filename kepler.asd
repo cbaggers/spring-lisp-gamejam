@@ -18,5 +18,6 @@
   :components ((:file "package")
 	       (:file "helpers")
 	       (:file "types")
+	       (:file "passive-particles")
 	       (:file "space-bodies")
                (:file "game")))

@@ -48,9 +48,12 @@
   (elt (elt *zoom-levels* level) stage))
 
 (defparameter *space-field-sizes*
-  '(100s0
+  #(100s0
     500s0
     4000s0))
+
+(defun field-size (&optional level)
+  (aref *space-field-sizes* (or level (game-state-level *game-state*))))
 
 (defun stage-bodies-spec (level)
   (elt *bodies* level))

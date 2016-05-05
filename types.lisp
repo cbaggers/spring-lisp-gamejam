@@ -3,14 +3,18 @@
 
 ;;----------------------------------------------------------------------
 
+(deftclass game-state
+  (level 0)
+  (stage 0))
+
+;;----------------------------------------------------------------------
+
 (deftclass actoroid
   ;;
   ;; gpu stuff
   (kind nil :type symbol)
   (stream (get-gpu-quad) :type buffer-stream)
-  (texture
-   (sample (cepl.devil:load-image-to-texture (path "tempAst.png")))
-   :type sampler)
+  (texture (error "A sampler must be provided") :type sampler)
   (colors (vector (nrgb 100 100 100)
 		  (nrgb 130 130 130)
 		  (nrgb 180 180 180))
@@ -35,6 +39,14 @@
   (velocity-ramp-pos 0s0 :type single-float)
   (max-speed 1s0 :type single-float))
 
+(defun make-player ()
+  (dbind (name tex &key radius mass) (player-stats 0 0)
+    (declare (ignore name))
+    (%make-player
+     :texture (load-texture tex)
+     :radius radius
+     :mass mass)))
+
 (defmethod mass ((x actoroid))
   (actoroid-mass x))
 
@@ -42,12 +54,6 @@
   (+ (actoroid-mass x)
      (reduce λ(+ _ (actoroid-mass (car _1))) (player-stuck x)
 	     :initial-value 0s0)))
-
-;;----------------------------------------------------------------------
-
-(deftclass game-state
-  (level 0)
-  (stage 0))
 
 ;;----------------------------------------------------------------------
 
@@ -85,3 +91,12 @@
   (with-gpu-array-as-c-array (x (ubo-data (camera-ubo camera)))
     (setf (cam-g-position (aref-c x 0))
 	  value)))
+
+(defmacro-g cam-it (pos cam)
+  `(- (* ,pos
+	 (v! (/ (/ (v:y (cam-g-size ,cam)) (v:x (cam-g-size ,cam)))
+		(cam-g-zoom ,cam))
+	     (/ 1 (cam-g-zoom ,cam))
+	     1
+	     1))
+      (v! (cam-g-position ,cam) 0 0)))
