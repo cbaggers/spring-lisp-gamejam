@@ -7,13 +7,11 @@
 (defvar *misc-draw* nil)
 (defvar *blend* nil)
 (defvar *sky-tex* nil)
-(defvar *moon-tex* nil)
 (defvar *sky-quad* nil)
 
 (defun init ()
   (skitter:listen-to (lambda (x y) (mouse-listener x y)) (skitter:mouse 0) :pos)
   (setf *sky-tex* (load-texture "tempSky.jpg"))
-  (setf *moon-tex* (load-texture "temp.png"))
   (setf *sky-quad* (make-gpu-quad))
   (setf *camera* (make-camera))
   (setf *player* (make-player))
