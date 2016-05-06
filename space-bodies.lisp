@@ -15,28 +15,28 @@
 (defparameter *player-journey*
   `(;; level 0
     ((:tiny-asteroid "asteroid_rgb.png"
-		     :radius 1 :mass 2)
+		     :radius 1 :mass 2 :speed 1s0)
      (:medium-asteroid "asteroid_rgb.png"
-		       :radius 2 :mass 6)
+		       :radius 2 :mass 6 :speed 1s0)
      (:large-asteroid "asteroid_rgb.png"
-		      :radius 4 :mass 14)
+		      :radius 4 :mass 14 :speed 1s0)
      (:planetoid "rocky_planet_rgb.png"
-		 :radius 8 :mass 28))
+		 :radius 8 :mass 28 :speed 1s0))
     ;; level 1
     ((:small-rocky-planet "rocky_planet_rgb.png"
-			  :radius 16 :mass 400)
+			  :radius 16 :mass 400 :speed 1s0)
      (:medium-rocky-planet "rocky_planet_rgb.png"
-			   :radius 32 :mass 800)
+			   :radius 32 :mass 800 :speed 1s0)
      (:gas-planet "jovian_rgb.png"
-		  :radius 64 :mass 1600)
+		  :radius 64 :mass 1600 :speed 1s0)
      (:gas-giant "jovian_rgb.png"
-		 :radius 192 :mass 4800))
+		 :radius 192 :mass 4800 :speed 1s0))
 
     ;; level 2
     ((:small-star "sun_rgb.png"
-		  :radius 400 :mass 90000)
+		  :radius 400 :mass 90000 :speed 1s0)
      (:large-star "sun_rgb.png"
-		  :radius 600 :mass 180000))
+		  :radius 600 :mass 180000 :speed 1s0))
 
     ;; level 3
 

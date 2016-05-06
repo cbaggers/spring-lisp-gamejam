@@ -1,6 +1,11 @@
 (in-package #:kepler)
 (in-readtable fn:fn-reader)
 
+(defconstant +fps+ 60s0) ;; frames per second
+(defconstant +spf+ (/ 1s0 +fps+)) ;; seconds per frame
+(defconstant +sps+ 60s0) ;; update steps per second
+(defconstant +fts+ (/ 1s0 60s0)) ;; fixed time step (seconds per step)
+
 (defvar *camera* nil)
 (defvar *player* nil)
 (defvar *rocks* nil)
@@ -15,7 +20,6 @@
   (unless *sky-tex*
     (init-particles)
     (skitter:listen-to (lambda (x y) (mouse-listener x y)) (skitter:mouse 0) :pos)
-    (setf *sky-tex* (load-texture "space_bg.png"))
     (setf *sky-quad* (make-gpu-quad))
     (setf *camera* (make-camera))
     (setf *player* (make-player))
@@ -28,7 +32,8 @@
 	   (setf (cffi:mem-aref ptr :float 0) (- (random 0.01) 0.005)
 		 (cffi:mem-aref ptr :float 1) (- (random 0.01) 0.005)
 		 (cffi:mem-aref ptr :float 2) 0s0)))
-    (reset-game 0 0)))
+    (reset-game 0 0)
+    (setf *sky-tex* (load-texture "space_bg.png"))))
 
 ;;----------------------------------------------------------------------
 
@@ -56,9 +61,10 @@
 	(>= (mass player) mass)))))
 
 (defun update-player-data (player level stage)
-  (dbind (_ tex &key mass &allow-other-keys) (player-stats level stage)
+  (dbind (_ tex &key mass speed &allow-other-keys) (player-stats level stage)
     (declare (ignore _))
     (setf (player-texture player) (load-texture tex))
+    (setf (player-max-speed player) speed)
     (setf (actoroid-mass player) mass)
     (setf (actoroid-colors player)
 	  (get-new-colors (mapcar #'car (player-stuck player))))
@@ -313,28 +319,43 @@
 
 ;;----------------------------------------------------------------------
 
-(defun update-player ()
-  (setf (actoroid-position *player*)
-	(v2:+ (actoroid-position *player*)
-	      (actoroid-velocity *player*)
-	      ;;(v2:/s (actoroid-velocity *player*) 60s0)
+(defun update-player (&optional (player *player*))
+  (setf (actoroid-position player)
+	(v2:+ (actoroid-position player)
+	      (actoroid-velocity player)
+	      ;;(v2:/s (actoroid-velocity player) 60s0)
 	      ))
-  (decf (actoroid-invincible-for-seconds *player*) (/ 1s0 60s0))
-  (setf (actoroid-velocity *player*)
-	(v2:- (actoroid-velocity *player*)
-	      (v2:*s (actoroid-velocity *player*) (/ 0.95 60s0))))
-  (let ((v (rotate-v2 (v! 0 (player-max-speed *player*))
-		      (actoroid-rotation *player*))))
-    (if (skitter:mouse-down-p mouse.left)
-	(setf (player-velocity-ramp-pos *player*)
-	      (min 1s0 (+ (player-velocity-ramp-pos *player*) (/ 4 60s0))))
-	(setf (player-velocity-ramp-pos *player*)
-	      (max 0s0 (- (player-velocity-ramp-pos *player*) (/ 1 60s0)))))
-    ;; update the velocity
-    (setf (actoroid-velocity *player*)
-	  (v2:*s v (easing-f:in-quint (player-velocity-ramp-pos *player*)))))
+  (decf (actoroid-invincible-for-seconds player) +fts+)
+  (setf (actoroid-velocity player)
+	(v2:- (actoroid-velocity player)
+	      (v2:*s (actoroid-velocity player) (* 0.95 +fts+))))
+  ;; accelerate when mouse down
+  (if (skitter:mouse-down-p mouse.left)
+      ;; accelerate
+      (let* ((target-vel (rotate-v2 (v! 0 (player-max-speed player))
+				    (actoroid-rotation player)))
+	     (ease (easing-f:out-cubic
+		    (setf (player-accel-ramp player)
+			  (min 1s0 (+ (player-accel-ramp player)
+				      (* 4 +fts+))))))
+	     (old-vel (player-key-up-vel player)))
+	(setf (player-decel-ramp player) 1s0)
+	(setf (player-key-down-vel player)
+	      (setf (actoroid-velocity player)
+		    (v! (lerp (x old-vel) (x target-vel) ease)
+			(lerp (y old-vel) (y target-vel) ease)))))
+      ;; decelerate
+      (let* ((ease (easing-f:in-cubic
+		    (setf (player-decel-ramp player)
+			  (max 0s0 (- (player-decel-ramp player)
+				      +fts+)))))
+	     (old-vel (player-key-down-vel player)))
+	(setf (player-accel-ramp player) 0s0)
+	(setf (player-key-up-vel player)
+	      (setf (actoroid-velocity player)
+		    (v2:*s old-vel ease)))))
   (update-stuck)
-  (check-for-player-collisions *player*))
+  (check-for-player-collisions player))
 
 (defun actor-offset (a b)
   (v2:- (actoroid-position b)
@@ -424,8 +445,7 @@
        (symbol-macrolet ((pos (actoroid-position r))
 			 (vel (actoroid-velocity r)))
 	 (setf pos (v2:+ pos vel))
-	 (decf (actoroid-invincible-for-seconds r)
-	       (/ 1s0 60s0))
+	 (decf (actoroid-invincible-for-seconds r) +fts+)
 	 (when (> (v2:length pos) field-size)
 	   (setf pos (v2:*s (v2:normalize pos) (- (- field-size 0.1s0)))))))))
 
@@ -443,7 +463,7 @@
 	 (progn (format t "-kepler started-~%")
 		(setf running t)
 		(let ((game-stepper (temporal-functions:make-stepper
-				     (seconds (/ 1.0 60.0))))
+				     (seconds +spf+)))
 		      (repl-stepper (temporal-functions:make-stepper
 				     (seconds (/ 1.0 10.0)))))
 		  (init)

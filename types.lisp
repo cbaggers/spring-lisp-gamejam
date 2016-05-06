@@ -36,14 +36,18 @@
    (sample (cepl.devil:load-image-to-texture (path "jovian_rgb.png")))
    :type sampler)
   (stuck nil :type list)
-  (velocity-ramp-pos 0s0 :type single-float)
-  (max-speed 1s0 :type single-float))
+  (accel-ramp 0s0 :type single-float)
+  (decel-ramp 0s0 :type single-float)
+  (max-speed 1s0 :type single-float)
+  (key-up-vel (v! 0 0) :type rtg-math.types:vec2)
+  (key-down-vel 0s0 :type rtg-math.types:vec2))
 
 (defun make-player ()
-  (dbind (name tex &key radius mass) (player-stats 0 0)
+  (dbind (name tex &key speed radius mass) (player-stats 0 0)
     (declare (ignore name))
     (%make-player
      :texture (load-texture tex)
+     :max-speed speed
      :radius radius
      :mass mass)))
 
