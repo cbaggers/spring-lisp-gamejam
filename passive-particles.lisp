@@ -149,25 +149,6 @@
 
 ;;----------------------------------------------------------------
 
-(defun-g draw-ring-vert ((vert :vec2) &uniform (cam cam-g :ubo)
-			 (field-size :float) (count :float))
-  (let* ((particle-scale 3s0)
-	 (index (float (/ gl-vertex-id 4)))
-	 (id (* (/ 90s0 count) index)))
-    (values (v! (cam-it (+ (v! (* vert particle-scale) 0.8)
-			   (* (v! (sin id) (cos id) 0) field-size))
-			cam)
-		1)
-    	    (* (+ vert (v! 1 1)) 0.5))))
-
-(defun-g draw-ring-frag ((tex-coord :vec2) &uniform (tex :sampler-2d))
-  (texture tex tex-coord))
-
-(def-g-> draw-ring ()
-  #'draw-ring-vert #'draw-ring-frag)
-
-;;----------------------------------------------------------------
-
 (defun update-particles (particle-system)
   (let* ((quad (get-gpu-quad))
 	 (f2b (particle-system-front-to-back particle-system))
@@ -202,13 +183,7 @@
 	   :positions (particle-gbuffer-positions destination)
 	   :tex texture
 	   :cam (camera-ubo camera)
-	   :field-size (field-size))
-    (let ((arr foopl))
-      (map-g #'draw-ring arr
-	     :count (/ (buffer-stream-length arr) 4s0)
-	     :field-size (field-size)
-	     :cam (camera-ubo camera)
-	     :tex texture))))
+	   :field-size (field-size))))
 
 ;;----------------------------------------------------------------
 
@@ -235,29 +210,6 @@
 		    (let ((indices #(3 0 1 3 1 2)))
 		      (labels ((put (ptr x)
 				 (multiple-value-bind (quad-num n) (floor x 6)
-				   (setf (cffi:mem-aref ptr :uint)
-					 (+ (aref indices n) (* quad-num 4))))))
-			(across-c-ptr #'put arr)))
-		    (make-gpu-array arr))))
-    (make-buffer-stream verts :index-array indices :retain-arrays t)))
-
-(defun make-ring-stream (len)
-  ;; (v! vert.x vert.y pos.u pos.v)
-  (let* ((quad-verts (vector (v! -1.0 -1.0) (v! 1.0 -1.0)
-			     (v! 1.0 1.0) (v! -1.0 1.0)))
-	 (verts (with-c-array
-		    (arr (across-c-ptr
-			  λ(let ((qv (svref quad-verts (mod _1 4))))
-			     (setf (cffi:mem-aref _ :float 0) (v:x qv)
-				   (cffi:mem-aref _ :float 1) (v:y qv)))
-			  (make-c-array nil :dimensions (* 4 len)
-					:element-type :vec2)))
-		  (make-gpu-array arr)))
-	 (indices (with-c-array (arr (make-c-array nil :dimensions (* 6 len)
-						   :element-type :uint))
-		    (let ((indices #(3 0 1 3 1 2)))
-		      (labels ((put (ptr i)
-				 (multiple-value-bind (quad-num n) (floor i 6)
 				   (setf (cffi:mem-aref ptr :uint)
 					 (+ (aref indices n) (* quad-num 4))))))
 			(across-c-ptr #'put arr)))

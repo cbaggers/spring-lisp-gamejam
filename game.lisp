@@ -304,20 +304,42 @@
 
 (defun-g sky-vert ((vert g-pt) &uniform (cam cam-g :ubo) (player-pos :vec2))
   (values (v! (s~ (pos vert) :xy) 0.99 1.0)
-	  (tex vert))) ;; (- (tex vert) (v! 0.5 0.5))
+	  (tex vert)
+	  (s~ (pos vert) :xy)))
 
-(defun-g sky-frag ((tc :vec2) &uniform (tex :sampler-2d) (cam cam-g :ubo))
-  (* (texture tex tc) 0.65))
+(defun-g sky-frag ((tc :vec2) (pos :vec2) &uniform (tex :sampler-2d) (nebula :sampler-2d)
+		   (cam cam-g :ubo) (field-size :float))
+  (let* ((screen-ratio (v! 1
+			   (/ (v:y (cam-g-size cam))
+			      (v:x (cam-g-size cam)))))
+	 (tc2 (+ tc (/ (* (cam-g-position cam)
+			  (v! 0.5 -1)
+			  screen-ratio)
+		       (cam-g-zoom cam))))
+	 (pixel-pos (+ (s~ (cam-g-position cam) :xy)
+		       (* (* pos screen-ratio)
+			  (cam-g-zoom cam))))
+	 (transition-dist 20s0)
+	 (dist (- (length pixel-pos)
+		  field-size
+		  transition-dist))
+	 (factor (/ (min (max dist 0s0) transition-dist)
+		    transition-dist)))
+    (mix (* (texture tex tc) 0.65)
+	 (texture nebula tc2)
+	 factor)))
 
-(def-g-> sky-pipeline ()
+(def-g-> sky-pipeline2 ()
   #'sky-vert #'sky-frag)
 
 (defun draw-sky ()
-  (map-g #'sky-pipeline
+  (map-g #'sky-pipeline2
 	 *sky-quad*
 	 :tex *sky-tex*
+	 :nebula *nebula-tex*
 	 :player-pos (actoroid-position *player*)
-	 :cam (camera-ubo *camera*) ))
+	 :cam (camera-ubo *camera*)
+	 :field-size (field-size)))
 
 ;;----------------------------------------------------------------------
 

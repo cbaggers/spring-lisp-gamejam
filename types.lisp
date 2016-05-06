@@ -98,7 +98,8 @@
 
 (defmacro-g cam-it (pos cam)
   `(* (- ,pos (v! (cam-g-position ,cam) 0))
+      ;; multiply by screen ratio
       (v! (/ (/ (v:y (cam-g-size ,cam)) (v:x (cam-g-size ,cam)))
-		(cam-g-zoom ,cam))
-	     (/ 1 (cam-g-zoom ,cam))
-	     1)))
+	     (cam-g-zoom ,cam))
+	  (/ 1 (cam-g-zoom ,cam))
+	  1)))
