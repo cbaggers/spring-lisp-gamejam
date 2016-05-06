@@ -8,9 +8,9 @@
 ;; "rings_rgb.png"
 
 (defparameter *zoom-levels*
-  '((15s0 17s0 24s0 30s0)
-    (140s0 200s0 300s0 400s0)
-    (400s0)))
+  '((30.0 34.0 48.0 60.0)
+    (280.0 320.0 400.0 500.0)
+    (800.0)))
 
 (defparameter *player-journey*
   `(;; level 0
@@ -51,8 +51,8 @@
 
 (defparameter *space-field-sizes*
   #(200s0
-    500s0
-    4000s0))
+    1000s0
+    2000s0))
 
 (defun field-size (&optional level)
   (aref *space-field-sizes* (or level (game-state-level *game-state*))))
@@ -63,7 +63,7 @@
 
 (defparameter *bodies*
   `(;; level 0
-    ((:tiny-asteroid "asteroid_rgb.png" 40
+    ((:tiny-asteroid "asteroid_rgb.png" 60
 		     :radius 1 :mass 1
 		     :speed (0 . 0.5)
 		     :colors ((,(nrgb 84 63 41)
@@ -76,16 +76,28 @@
 				,(nrgb 95 122 150)
 				,(nrgb 140 196 255))))
      ;;(:medium-asteroid "" 5)
-     (:comet "comet_rgb.png" 1
+     (:comet "comet_rgb.png" 10
 	     :radius 1.5 :mass 28
 	     :rotation ,(/ +pi+ 2)
-	     :speed 3
+	     :speed (1.5 . 2)
 	     :colors ((,(nrgb 9 83 145)
 			,(nrgb 94 224 238)
 			,(nrgb 210 255 253))
 		      (,(nrgb 82 49 137)
 			,(nrgb 207 105 222)
-			,(nrgb 244 202 249)))))
+			,(nrgb 244 202 249))))
+
+     (:planetoid "rocky_planet_rgb.png" 3
+		 :radius 8 :mass 28 :speed 1s0
+		 :colors ((,(nrgb 84 63 41)
+			    ,(nrgb 150 123 95)
+			    ,(nrgb 255 199 140))
+			  (,(nrgb 49 45 42)
+			    ,(nrgb 95 91 86)
+			    ,(nrgb 156 147 137))
+			  (,(nrgb 41 62 84)
+			    ,(nrgb 95 122 150)
+			    ,(nrgb 140 196 255)))))
 
     (;; level 1
      (:planetoid "rocky_planet_rgb.png" 30
@@ -124,6 +136,23 @@
 			  (,(nrgb 61 48 39)
 			    ,(nrgb 175 159 97)
 			    ,(nrgb 219 181 33))))
+     (:gas-planet "jovian_rgb.png" 1
+		  :radius 1.5 :mass 28
+		  :speed 0.5
+		  :colors ((,(nrgb 107 56 22)
+			     ,(nrgb 220 135 25)
+			     ,(nrgb 253 221 107))
+			   (,(nrgb 23 22 107)
+			     ,(nrgb 144 25 220)
+			     ,(nrgb 56 240 241))
+			   (,(nrgb 107 22 70)
+			     ,(nrgb 220 25 103)
+			     ,(nrgb 253 107 134))
+			   (,(nrgb 63 107 22)
+			     ,(nrgb 87 220 25)
+			     ,(nrgb 122 253 107)))))
+
+    (;; level 2
      (:gas-planet "jovian_rgb.png" 1
 		  :radius 1.5 :mass 28
 		  :speed 0.5
