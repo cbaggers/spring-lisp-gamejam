@@ -50,7 +50,7 @@
   (elt (elt *zoom-levels* level) stage))
 
 (defparameter *space-field-sizes*
-  #(100s0
+  #(200s0
     500s0
     4000s0))
 

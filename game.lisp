@@ -14,6 +14,7 @@
 (defvar *sky-tex* nil)
 (defvar *dust-tex* nil)
 (defvar *sky-quad* nil)
+(defvar *nebula-tex* nil)
 (defvar *particle-system* nil)
 
 (defun init ()
@@ -26,6 +27,7 @@
     (setf *blend* (make-blending-params))
     (setf *dust-tex* (load-texture "star_02.png"))
     (setf *particle-system* (make-particle-system))
+    (setf *nebula-tex* (load-texture "nebula.jpg"))
     (populate-velocities-using-func
 	 (lambda (ptr x y)
 	   (declare (ignorable x y))

@@ -1,4 +1,5 @@
 (in-package :kepler)
+(in-readtable fn:fn-reader)
 
 (defvar *particle-stream* nil)
 (defparameter *particle-resolution* '(128 128))
@@ -127,25 +128,43 @@
 ;;----------------------------------------------------------------
 
 (defun-g place-particle ((vert :vec4) &uniform (positions :sampler-2d)
-			 (cam cam-g :ubo))
+			 (cam cam-g :ubo) (field-size :float))
   (let* ((particle-scale 0.4)
+	 (spread-factor 2)
 	 (pos-index (v!int (int (floor (v:z vert))) (int (floor (v:w vert)))))
 	 (particle-position (texel-fetch positions pos-index 0))
-	 (corner-pos (v! (v:x vert) (v:y vert))))
+	 (corner-pos (s~ vert :xy)))
     (values (v! (cam-it (+ (v! (* corner-pos particle-scale) 0.8)
-			   (* (v! (s~ particle-position :xy) 0) 10))
+			   (* (v! (s~ particle-position :xy) 0)
+			      spread-factor))
 			cam)
 		1)
-    	    (* (+ corner-pos (v! 1 1)) 0.5)
-	    (v! 1 0 1 1))))
+    	    (* (+ corner-pos (v! 1 1)) 0.5))))
 
-(defun-g place-particle-frag ((tex-coord :vec2) (col :vec4)
-			      &uniform (tex :sampler-2d))
-  ;;col
+(defun-g place-particle-frag ((tex-coord :vec2) &uniform (tex :sampler-2d))
   (texture tex tex-coord))
 
 (def-g-> draw-particles-pline ()
   #'place-particle #'place-particle-frag)
+
+;;----------------------------------------------------------------
+
+(defun-g draw-ring-vert ((vert :vec2) &uniform (cam cam-g :ubo)
+			 (field-size :float) (count :float))
+  (let* ((particle-scale 3s0)
+	 (index (float (/ gl-vertex-id 4)))
+	 (id (* (/ 90s0 count) index)))
+    (values (v! (cam-it (+ (v! (* vert particle-scale) 0.8)
+			   (* (v! (sin id) (cos id) 0) field-size))
+			cam)
+		1)
+    	    (* (+ vert (v! 1 1)) 0.5))))
+
+(defun-g draw-ring-frag ((tex-coord :vec2) &uniform (tex :sampler-2d))
+  (texture tex tex-coord))
+
+(def-g-> draw-ring ()
+  #'draw-ring-vert #'draw-ring-frag)
 
 ;;----------------------------------------------------------------
 
@@ -182,7 +201,14 @@
     (map-g #'draw-particles-pline *particle-stream*
 	   :positions (particle-gbuffer-positions destination)
 	   :tex texture
-	   :cam (camera-ubo camera))))
+	   :cam (camera-ubo camera)
+	   :field-size (field-size))
+    (let ((arr foopl))
+      (map-g #'draw-ring arr
+	     :count (/ (buffer-stream-length arr) 4s0)
+	     :field-size (field-size)
+	     :cam (camera-ubo camera)
+	     :tex texture))))
 
 ;;----------------------------------------------------------------
 
@@ -209,6 +235,29 @@
 		    (let ((indices #(3 0 1 3 1 2)))
 		      (labels ((put (ptr x)
 				 (multiple-value-bind (quad-num n) (floor x 6)
+				   (setf (cffi:mem-aref ptr :uint)
+					 (+ (aref indices n) (* quad-num 4))))))
+			(across-c-ptr #'put arr)))
+		    (make-gpu-array arr))))
+    (make-buffer-stream verts :index-array indices :retain-arrays t)))
+
+(defun make-ring-stream (len)
+  ;; (v! vert.x vert.y pos.u pos.v)
+  (let* ((quad-verts (vector (v! -1.0 -1.0) (v! 1.0 -1.0)
+			     (v! 1.0 1.0) (v! -1.0 1.0)))
+	 (verts (with-c-array
+		    (arr (across-c-ptr
+			  λ(let ((qv (svref quad-verts (mod _1 4))))
+			     (setf (cffi:mem-aref _ :float 0) (v:x qv)
+				   (cffi:mem-aref _ :float 1) (v:y qv)))
+			  (make-c-array nil :dimensions (* 4 len)
+					:element-type :vec2)))
+		  (make-gpu-array arr)))
+	 (indices (with-c-array (arr (make-c-array nil :dimensions (* 6 len)
+						   :element-type :uint))
+		    (let ((indices #(3 0 1 3 1 2)))
+		      (labels ((put (ptr i)
+				 (multiple-value-bind (quad-num n) (floor i 6)
 				   (setf (cffi:mem-aref ptr :uint)
 					 (+ (aref indices n) (* quad-num 4))))))
 			(across-c-ptr #'put arr)))
