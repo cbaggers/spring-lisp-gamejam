@@ -16,6 +16,9 @@
 (defvar *sky-quad* nil)
 (defvar *nebula-tex* nil)
 (defvar *particle-system* nil)
+(defvar *amb-p-alpha* 0s0)
+(defvar *amb-p-size* nil)
+(defvar *amb-p-colors* nil)
 
 (defun init ()
   (unless *sky-tex*
@@ -28,6 +31,7 @@
     (setf *dust-tex* (load-texture "star_02.png"))
     (setf *particle-system* (make-particle-system))
     (setf *nebula-tex* (load-texture "nebula.jpg"))
+    (setf *amb-p-size* 0.4)
     (populate-velocities-using-func
 	 (lambda (ptr x y)
 	   (declare (ignorable x y))
@@ -145,6 +149,11 @@
   ;; {TODO} do something with field size
   (let ((space-field-size (elt *space-field-sizes* level))
 	(rand-rotation (random (* +pi+ 2))))
+    (dbind (ptex psize palpha pcol) (passive-particle-spec level)
+      (setf *dust-tex* (load-texture ptex)
+	    *amb-p-size* psize
+	    *amb-p-alpha* palpha
+	    *amb-p-colors* (make-array 3 :initial-contents pcol)))
     ;; add new bodies from spec
     ;; {TODO} for now just dump *rocks*, later animate this
     (setf *rocks*
@@ -434,7 +443,8 @@
 		:collect i))))
     (loop :until (every #'identity attached) :for d :from 0 :do
        (when (> d 500)
-	 (break "oh ~a ~s ~s" attached neighbours stuck))
+	 (loop :for i :below (length attached) :do
+	    (setf (aref attached i) :f)))
        (loop :for s :in stuck :for ns :in neighbours :for i :from 0 :do
 	  (unless (aref attached i)
 	    (setf (aref attached i)
@@ -452,7 +462,8 @@
   (with-blending *blend*
     (with-viewport (camera-viewport *camera*)
       (draw-sky)
-      (draw-passive-particles *particle-system* *camera* *dust-tex*)
+      (draw-passive-particles *particle-system* *camera* *dust-tex*
+			      *amb-p-size* *amb-p-colors* *amb-p-alpha*)
       (draw-actor *player*)
       (loop :for a :in *rocks* :do (draw-actor a))
       (loop :for a :in *misc-draw* :do (draw-actor a))

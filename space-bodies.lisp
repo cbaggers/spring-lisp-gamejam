@@ -7,6 +7,21 @@
 ;; "corona_outer_rgb.png"
 ;; "rings_rgb.png"
 
+(defparameter *ambient-particles*
+  `(("star_02.png" 0.4 0 (,(nrgb 107 56 22)
+			   ,(nrgb 220 135 25)
+			   ,(nrgb 253 221 107)))
+    ("asteroid_rgb.png" 8 0.97 (,(nrgb 107 56 22)
+				 ,(nrgb 220 135 25)
+				 ,(nrgb 253 221 107)))
+    ("rocky_planet_rgb.png" 30 0.97 (,(nrgb 107 56 22)
+				      ,(nrgb 220 135 25)
+				      ,(nrgb 253 221 107)))))
+
+(defun passive-particle-spec (level)
+  (elt *ambient-particles* level))
+
+
 (defparameter *zoom-levels*
   '((30.0 34.0 48.0 60.0)
     (280.0 320.0 400.0 500.0)
@@ -24,19 +39,19 @@
 		 :radius 8 :mass 28 :speed 1s0))
     ;; level 1
     ((:small-rocky-planet "rocky_planet_rgb.png"
-			  :radius 16 :mass 400 :speed 1s0)
+			  :radius 16 :mass 40 :speed 3s0)
      (:medium-rocky-planet "rocky_planet_rgb.png"
-			   :radius 32 :mass 800 :speed 1s0)
+			   :radius 32 :mass 80 :speed 3s0)
      (:gas-planet "jovian_rgb.png"
-		  :radius 64 :mass 1600 :speed 1s0)
+		  :radius 64 :mass 160 :speed 3s0)
      (:gas-giant "jovian_rgb.png"
-		 :radius 192 :mass 4800 :speed 1s0))
+		 :radius 192 :mass 480 :speed 3s0))
 
     ;; level 2
     ((:small-star "sun_rgb.png"
-		  :radius 400 :mass 90000 :speed 1s0)
+		  :radius 400 :mass 9000 :speed 5s0)
      (:large-star "sun_rgb.png"
-		  :radius 600 :mass 180000 :speed 1s0))
+		  :radius 600 :mass 18000 :speed 5s0))
 
     ;; level 3
 
@@ -114,7 +129,7 @@
 			    ,(nrgb 219 181 33))))
      (:small-rocky-planet "rocky_planet_rgb.png" 30
 			  :radius 16 :mass 40
-			  :speed 0.5
+			  :speed 0.5p
 			  :colors ((,(nrgb 39 61 55)
 			    ,(nrgb 97 175 175)
 			    ,(nrgb 183 233 96))

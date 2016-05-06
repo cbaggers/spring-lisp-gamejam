@@ -2,7 +2,7 @@
 (in-readtable fn:fn-reader)
 
 (defvar *particle-stream* nil)
-(defparameter *particle-resolution* '(128 128))
+(defparameter *particle-resolution* '(64 64))
 (defparameter *starting-positions* nil)
 (defparameter *starting-velocities*
   (make-c-array (make-array *particle-resolution* :initial-element (v! 0 0 0))
@@ -128,21 +128,28 @@
 ;;----------------------------------------------------------------
 
 (defun-g place-particle ((vert :vec4) &uniform (positions :sampler-2d)
-			 (cam cam-g :ubo) (field-size :float))
-  (let* ((particle-scale 0.4)
-	 (spread-factor 2)
+			 (cam cam-g :ubo) (field-size :float)
+			 (particle-size :float))
+  (let* ((spread-factor (* (/ 8s0 1024s0) field-size))
 	 (pos-index (v!int (int (floor (v:z vert))) (int (floor (v:w vert)))))
 	 (particle-position (texel-fetch positions pos-index 0))
 	 (corner-pos (s~ vert :xy)))
-    (values (v! (cam-it (+ (v! (* corner-pos particle-scale) 0.8)
+    (values (v! (cam-it (+ (v! (* corner-pos particle-size) 0.8)
 			   (* (v! (s~ particle-position :xy) 0)
 			      spread-factor))
 			cam)
 		1)
     	    (* (+ corner-pos (v! 1 1)) 0.5))))
 
-(defun-g place-particle-frag ((tex-coord :vec2) &uniform (tex :sampler-2d))
-  (texture tex tex-coord))
+(defun-g place-particle-frag ((tex-coord :vec2) &uniform (tex :sampler-2d)
+			      (rcol :vec3) (gcol :vec3) (bcol :vec3)
+			      (neg-alpha :float))
+  (let ((map (texture tex tex-coord)))
+    ;;   (- map (v! 0 0 0 neg-alpha))
+    (v! (+ (* rcol (v:x map))
+	   (* gcol (v:y map))
+	   (* bcol (v:z map)))
+	(- (v:w map) neg-alpha))))
 
 (def-g-> draw-particles-pline ()
   #'place-particle #'place-particle-frag)
@@ -174,7 +181,8 @@
     	     :velocities (particle-gbuffer-velocities source)
 	     :field-size (field-size)))))
 
-(defun draw-passive-particles (particle-system camera texture)
+(defun draw-passive-particles (particle-system camera texture size
+			       colors neg-alpha)
   (let* ((f2b (particle-system-front-to-back particle-system))
 	 (destination (if f2b
 			  (particle-system-back-gbuffer particle-system)
@@ -182,8 +190,13 @@
     (map-g #'draw-particles-pline *particle-stream*
 	   :positions (particle-gbuffer-positions destination)
 	   :tex texture
+	   :particle-size size
 	   :cam (camera-ubo camera)
-	   :field-size (field-size))))
+	   :field-size (field-size)
+	   :rcol (aref colors 0)
+	   :gcol (aref colors 1)
+	   :bcol (aref colors 2)
+	   :neg-alpha neg-alpha)))
 
 ;;----------------------------------------------------------------
 
