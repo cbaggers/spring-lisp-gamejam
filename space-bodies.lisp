@@ -17,7 +17,7 @@
     ("star_02.png" 0.7 0 5s0(,(nrgb 107 56 22)
 			      ,(nrgb 220 135 25)
 			      ,(nrgb 253 221 107)))
-    ("asteroid_rgb.png" 8 0.97 25s0 (,(nrgb 107 56 22)
+    ("asteroid_rgb.png" 4 0.97 25s0 (,(nrgb 107 56 22)
 				      ,(nrgb 220 135 25)
 				      ,(nrgb 253 221 107)))
     ("rocky_planet_rgb.png" 30 0.97 50s0 (,(nrgb 107 56 22)
