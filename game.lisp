@@ -274,8 +274,19 @@
 	   (* bcol (v:z map)))
 	(* (v:w map) (- 1 f)))))
 
+(defun-g actor-replace-stuck ((tc :vec2) &uniform (tex :sampler-2d)
+			     (rcol :vec3) (gcol :vec3) (bcol :vec3))
+  (let ((map (texture tex tc)))
+    (v! (+ (* rcol (v:x map))
+	   (* gcol (v:y map))
+	   (* bcol (v:z map)))
+	(v:w map))))
+
 (def-g-> actor-replace-color-pipeline ()
   #'actor-vert #'actor-replace-frag)
+
+(def-g-> actor-replace-color-pipeline2 ()
+  #'actor-vert #'actor-replace-stuck)
 
 (defun draw-actor (x)
   (declare (optimize debug))
@@ -292,9 +303,24 @@
 	 :field-size (field-size)
 	 :falloff *nebula-falloff*))
 
-(defun draw-stuck (x)
+(defun draw-player (x)
   (declare (optimize debug))
   (map-g #'actor-replace-color-pipeline
+	 (actoroid-stream x)
+	 :pos (actoroid-position x)
+	 :tex (actoroid-texture x)
+	 :rot (m3:rotation-z (actoroid-rotation x))
+	 :cam (camera-ubo *camera*)
+	 :rad (actoroid-radius x)
+	 :rcol (aref (actoroid-colors x) 0)
+	 :gcol (aref (actoroid-colors x) 1)
+	 :bcol (aref (actoroid-colors x) 2)
+	 :field-size (field-size)
+	 :falloff *nebula-falloff*))
+
+(defun draw-stuck (x)
+  (declare (optimize debug))
+  (map-g #'actor-replace-color-pipeline2
 	 (actoroid-stream x)
 	 :pos (actoroid-position x)
 	 :tex (actoroid-texture x)
@@ -304,8 +330,7 @@
 	 :rad (actoroid-radius x)
 	 :rcol (aref (actoroid-colors x) 0)
 	 :gcol (aref (actoroid-colors x) 1)
-	 :bcol (aref (actoroid-colors x) 2)
-	 :falloff (* (field-size) 10)))
+	 :bcol (aref (actoroid-colors x) 2)))
 
 (defun update-stuck ()
   (loop :for (s . offset) :in (player-stuck *player*) :do
@@ -466,7 +491,7 @@
       (draw-sky)
       (draw-passive-particles *particle-system* *camera* *dust-tex*
 			      *amb-p-size* *amb-p-colors* *amb-p-alpha*)
-      (draw-actor *player*)
+      (draw-player *player*)
       (loop :for a :in *rocks* :do (draw-actor a))
       (loop :for a :in *misc-draw* :do (draw-actor a))
       (loop :for s :in (player-stuck *player*) :do (draw-stuck (car s)))))
