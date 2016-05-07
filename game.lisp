@@ -515,9 +515,9 @@
 	 :field-size (field-size)
 	 :nebula-falloff *nebula-falloff*))
 
-(defun-g splat-vert ((vert g-pt))
+(defun-g splat-vert ((vert g-pt) &uniform (ymult :float))
   (values (v! (s~ (pos vert) :xy) 0.999 1.0)
-	  (tex vert)))
+	  (* (tex vert) (v! 1 ymult))))
 
 (defun-g splat-frag ((tc :vec2) &uniform (tex :sampler-2d) (alpha :float))
   (let ((col (texture tex tc)))
@@ -527,8 +527,8 @@
 (def-g-> splat ()
   #'splat-vert #'splat-frag)
 
-(defun draw-quad (tex &optional (alpha 1s0))
-  (map-g #'splat *sky-quad* :tex tex :alpha alpha))
+(defun draw-quad (tex &optional (alpha 1s0) (ymult 1s0))
+  (map-g #'splat *sky-quad* :tex tex :alpha alpha :ymult ymult))
 
 ;;----------------------------------------------------------------------
 
@@ -651,17 +651,22 @@
 			  300s0
 			  +fts+))))))
 
+(defvar fff 0)
+(defparameter sss (make-stepper (seconds 1)))
 (defun draw ()
+  ;; (incf fff)
+  ;; (when (funcall sss)
+  ;;   (print fff)
+  ;;   (setf fff 0))
   (with-viewport (camera-viewport *camera*)
     (with-blending *blend*
       (with-fbo-bound (*first-pass-fbo* :with-blending nil :with-viewport nil)
 	(clear)
+
 	(ttm:update *temporal-draw-funcs*)
-	;;
 	(draw-sky)
-	;;
 	(draw-passive-particles *particle-system* *camera* *dust-tex*)
-	;;
+
 	(when *rocks*
 	  (let* ((min 0.3) (max 0.4) (range (- max min))
 		 (mult (/ range (length *rocks*))))
@@ -672,13 +677,14 @@
 		 (mult (/ range (length *rocks*))))
 	    (loop :for s :in (player-stuck *player*) :for i :from 0 :do
 	       (draw-stuck (car s) (- max (* i mult))))))
-	;;
+
 	(loop :for a :in *misc-draw* :do (draw-actor a))
-	;;
-	(draw-player *player*)
-	(swap)))
+
+	(draw-player *player*)))
     (clear)
-    (draw-quad *first-pass-sampler* 1s0)
+    (bloom (get-gpu-quad) *first-pass-sampler* (abs (sin (* (get-internal-real-time) 0.001))))
+
+    ;;(draw-quad *first-pass-sampler* 1s0 -1s0)
     (swap)))
 
 (defun update-rocks ()
