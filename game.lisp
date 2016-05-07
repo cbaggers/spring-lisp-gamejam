@@ -467,6 +467,7 @@
 	(setf (player-key-up-vel player)
 	      (setf (actoroid-velocity player)
 		    (v2:*s old-vel ease)))))
+  (nebula-push-back player)
   (update-stuck)
   (check-for-player-collisions player))
 
@@ -542,6 +543,14 @@
        (when (eq :f a)
 	 (detach-rock-from-player *player* s)))))
 
+(defun nebula-push-back (player)
+  (let ((ppos (actoroid-position player)))
+    (setf (actoroid-velocity player)
+	  (v2:+ (actoroid-velocity player)
+		(v2:*s (v2:normalize ppos)
+		       (* (- (max 0s0 (- (v2:length ppos) (field-size))))
+			  300s0
+			  +fts+))))))
 
 (defun draw ()
   (clear)
