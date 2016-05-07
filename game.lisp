@@ -275,12 +275,13 @@
 	(* (v:w map) (- 1 f)))))
 
 (defun-g actor-replace-stuck ((tc :vec2) &uniform (tex :sampler-2d)
-			     (rcol :vec3) (gcol :vec3) (bcol :vec3))
+			      (rcol :vec3) (gcol :vec3) (bcol :vec3)
+			      (neg-alpha :float))
   (let ((map (texture tex tc)))
     (v! (+ (* rcol (v:x map))
 	   (* gcol (v:y map))
 	   (* bcol (v:z map)))
-	(v:w map))))
+	(- (v:w map) neg-alpha))))
 
 (def-g-> actor-replace-color-pipeline ()
   #'actor-vert #'actor-replace-frag)
@@ -305,7 +306,7 @@
 
 (defun draw-player (x)
   (declare (optimize debug))
-  (map-g #'actor-replace-color-pipeline
+  (map-g #'actor-replace-color-pipeline2
 	 (actoroid-stream x)
 	 :pos (actoroid-position x)
 	 :tex (actoroid-texture x)
@@ -315,8 +316,9 @@
 	 :rcol (aref (actoroid-colors x) 0)
 	 :gcol (aref (actoroid-colors x) 1)
 	 :bcol (aref (actoroid-colors x) 2)
-	 :field-size (field-size)
-	 :falloff *nebula-falloff*))
+	 :neg-alpha (if (> (actoroid-invincible-for-seconds x) 0.0)
+			(+ 0.5 (/ (sin (* 10 (actoroid-invincible-for-seconds x))) 2))
+			0s0)))
 
 (defun draw-stuck (x)
   (declare (optimize debug))
@@ -330,7 +332,8 @@
 	 :rad (actoroid-radius x)
 	 :rcol (aref (actoroid-colors x) 0)
 	 :gcol (aref (actoroid-colors x) 1)
-	 :bcol (aref (actoroid-colors x) 2)))
+	 :bcol (aref (actoroid-colors x) 2)
+	 :neg-alpha 0s0))
 
 (defun update-stuck ()
   (loop :for (s . offset) :in (player-stuck *player*) :do
