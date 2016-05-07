@@ -20,9 +20,23 @@
 (defvar *amb-p-size* nil)
 (defvar *amb-p-colors* nil)
 (defvar *nebula-falloff* 20s0)
+(defvar *eat-sound* nil)
+(defvar *grow-sound* nil)
+(defvar *shrink-sound* nil)
+(defvar *collision-sound* nil)
 
 (defun init ()
   (unless *sky-tex*
+    (sdl2-mixer:init :ogg)
+    (sdl2-mixer:open-audio 22050 :s16sys 1 1024)
+    (sdl2-mixer:play-music (load-ogg "Psyonik_-_The_Heavens_Sing.ogg"))
+    (sdl2-mixer:volume-music 20)
+
+    (setf *eat-sound* (load-wav "eat.wav"))
+    (setf *grow-sound* (load-wav "grow.wav"))
+    (setf *shrink-sound* (load-wav "shrink.wav"))
+    (setf *collision-sound* (load-wav "collision.wav"))
+
     (init-particles)
     (skitter:listen-to λ(mouse-listener _ _1) (skitter:mouse 0) :pos)
     (skitter:listen-to λ(window-size-callback _ _1) (skitter:window 0) :size)
@@ -56,6 +70,7 @@
 (defun reset-player (&optional (player *player*) level stage)
   (let ((level (or level (game-state-level *game-state*)))
 	(stage (or stage (game-state-stage *game-state*))))
+    (setf (actoroid-invincible-for-seconds player) 3s0)
     (setf (player-stuck player) nil)
     (setf (actoroid-position player) (v! 0 0)
 	  (actoroid-velocity player) (v! 0 0))
@@ -234,6 +249,7 @@
 (defun goto-next-stage (player game-state)
   (let ((last-level (game-state-level game-state))
 	(last-stage (game-state-stage game-state)))
+    (sdl2-mixer:play-channel -1 *grow-sound* 0)
     (dbind (level stage) (calc-next-stage last-level last-stage)
       ;; update the game state
       (setf (game-state-level game-state) level
@@ -257,13 +273,15 @@
 (defun maybe-goto-next-stage (player game-state)
   (let ((ready (player-ready-for-next-stage-p player game-state)))
     ;;(break "~a ~a ~a" player (mass player) ready)
-    (when ready
-      (goto-next-stage player game-state))))
+    (if ready
+	(goto-next-stage player game-state)
+	(sdl2-mixer:play-channel -1 *eat-sound* 0))))
 
 (defun go-back-a-stage (player game-state)
   (let ((last-level (game-state-level game-state))
 	(last-stage (game-state-stage game-state)))
     (unless (= last-level last-stage 0)
+      (sdl2-mixer:play-channel -1 *shrink-sound* 0)
       (dbind (level stage) (calc-last-stage last-level last-stage)
 	;; update the game state
 	(setf (game-state-level game-state) level
@@ -291,6 +309,7 @@
 
 (defun bump (player)
   (when (<= (actoroid-invincible-for-seconds player) 0s0)
+    (sdl2-mixer:play-channel -1 *collision-sound* 0)
     (shake-cam)
     (setf (actoroid-invincible-for-seconds player) 0.5)))
 

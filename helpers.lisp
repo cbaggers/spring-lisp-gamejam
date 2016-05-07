@@ -50,3 +50,17 @@
   (or (gethash path *cached-textures*)
       (setf (gethash path *cached-textures*)
 	    (sample (cepl.devil:load-image-to-texture (path path))))))
+
+(defparameter *cached-ogg* (make-hash-table :test #'equal))
+
+(defun load-ogg (path)
+  (or (gethash path *cached-textures*)
+      (setf (gethash path *cached-audio*)
+	    (sdl2-mixer:load-music (path path)))))
+
+(defparameter *cached-wavs* (make-hash-table :test #'equal))
+
+(defun load-wav (path)
+  (or (gethash path *cached-textures*)
+      (setf (gethash path *cached-audio*)
+	    (sdl2-mixer:load-wav (path path)))))

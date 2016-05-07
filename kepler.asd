@@ -13,7 +13,8 @@
                #:cepl.devil
 	       #:structy-defclass
 	       #:dendrite
-	       #:easing)
+	       #:easing
+	       #:sdl2-mixer)
   :serial t
   :components ((:file "package")
 	       (:file "helpers")
