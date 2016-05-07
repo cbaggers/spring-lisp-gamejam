@@ -360,7 +360,7 @@
 	 :ymod 0.1
 	 :pos (actoroid-position x)
 	 :tex (actoroid-texture x)
-	 :rot (m3:rotation-z (actoroid-rotation x))
+	 :rot (m3:rotation-z 0s0)
 	 :cam (camera-ubo *camera*)
 	 :rad (actoroid-radius x)
 	 :rcol (aref (actoroid-colors x) 0)
@@ -378,8 +378,7 @@
 	 :ymod ymod
 	 :pos (actoroid-position x)
 	 :tex (actoroid-texture x)
-	 :rot (m3:rotation-z (+ (actoroid-rotation x)
-				(actoroid-rotation *player*)))
+	 :rot (m3:rotation-z (actoroid-rotation x))
 	 :cam (camera-ubo *camera*)
 	 :rad (actoroid-radius x)
 	 :rcol (aref (actoroid-colors x) 0)
@@ -391,8 +390,7 @@
 (defun update-stuck ()
   (loop :for (s . offset) :in (player-stuck *player*) :do
      (setf (actoroid-position s)
-	   (v2:+ (actoroid-position *player*)
-		 (rotate-v2 offset (actoroid-rotation *player*))))))
+	   (v2:+ (actoroid-position *player*) offset))))
 
 ;;----------------------------------------------------------------------
 
@@ -501,11 +499,9 @@
   (symbol-macrolet ((stuck (player-stuck player)))
     (let ((o (actor-offset player rock)))
       (setf *rocks* (remove rock *rocks*))
-      (push (cons rock (rotate-v2
-			(v2:- o
-			      (v2:*s (actor-offset stick-to rock) 0.05)
-			      (v2:*s (actor-offset player rock) 0.05))
-			(- (actoroid-rotation player))))
+      (push (cons rock (v2:- o
+			     (v2:*s (actor-offset stick-to rock) 0.05)
+			     (v2:*s (actor-offset player rock) 0.05)))
 	    stuck))
     (maybe-goto-next-stage player *game-state*)))
 
