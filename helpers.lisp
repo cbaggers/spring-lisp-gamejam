@@ -55,12 +55,12 @@
 
 (defun load-ogg (path)
   (or (gethash path *cached-textures*)
-      (setf (gethash path *cached-audio*)
+      (setf (gethash path *cached-ogg*)
 	    (sdl2-mixer:load-music (path path)))))
 
 (defparameter *cached-wavs* (make-hash-table :test #'equal))
 
 (defun load-wav (path)
   (or (gethash path *cached-textures*)
-      (setf (gethash path *cached-audio*)
+      (setf (gethash path *cached-wavs*)
 	    (sdl2-mixer:load-wav (path path)))))
