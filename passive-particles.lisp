@@ -19,7 +19,15 @@
 (deftclass (particle-system (:constructor %make-particle-system))
   (front-gbuffer (make-particle-gbuffer))
   (back-gbuffer (make-particle-gbuffer) :type particle-gbuffer)
-  (front-to-back t :type boolean))
+  (front-to-back t :type boolean)
+  (neg-alpha 0s0 :type single-float )
+  (size 1s0 :type single-float)
+  (colors (make-array 3 :initial-contents
+		      (list (nrgb 107 56 22)
+			    (nrgb 220 135 25)
+			    (nrgb 253 221 107)))
+	  :type array)
+  (spread 2s0 :type single-float))
 
 (defun make-particle-system ()
   (let ((result (%make-particle-system)))
@@ -127,35 +135,6 @@
 
 ;;----------------------------------------------------------------
 
-(defun-g place-particle ((vert :vec4) &uniform (positions :sampler-2d)
-			 (cam cam-g :ubo) (field-size :float)
-			 (particle-size :float))
-  (let* ((spread-factor (* (/ 8s0 1000s0) field-size))
-	 (pos-index (v!int (int (floor (v:z vert))) (int (floor (v:w vert)))))
-	 (particle-position (texel-fetch positions pos-index 0))
-	 (corner-pos (s~ vert :xy)))
-    (values (v! (cam-it (+ (v! (* corner-pos particle-size) 0.8)
-			   (* (v! (s~ particle-position :xy) 0)
-			      spread-factor))
-			cam)
-		1)
-    	    (* (+ corner-pos (v! 1 1)) 0.5))))
-
-(defun-g place-particle-frag ((tex-coord :vec2) &uniform (tex :sampler-2d)
-			      (rcol :vec3) (gcol :vec3) (bcol :vec3)
-			      (neg-alpha :float))
-  (let ((map (texture tex tex-coord)))
-    ;;   (- map (v! 0 0 0 neg-alpha))
-    (v! (+ (* rcol (v:x map))
-	   (* gcol (v:y map))
-	   (* bcol (v:z map)))
-	(- (v:w map) neg-alpha))))
-
-(def-g-> draw-particles-pline ()
-  #'place-particle #'place-particle-frag)
-
-;;----------------------------------------------------------------
-
 (defun update-particles (particle-system)
   (let* ((quad (get-gpu-quad))
 	 (f2b (particle-system-front-to-back particle-system))
@@ -181,22 +160,50 @@
     	     :velocities (particle-gbuffer-velocities source)
 	     :field-size (field-size)))))
 
-(defun draw-passive-particles (particle-system camera texture size
-			       colors neg-alpha)
-  (let* ((f2b (particle-system-front-to-back particle-system))
+;;----------------------------------------------------------------
+
+(defun-g place-particle ((vert :vec4) &uniform (positions :sampler-2d)
+			 (cam cam-g :ubo) (field-size :float)
+			 (particle-size :float) (spread :float))
+  (let* ((pos-index (v!int (int (floor (v:z vert))) (int (floor (v:w vert)))))
+	 (particle-position (texel-fetch positions pos-index 0))
+	 (corner-pos (s~ vert :xy)))
+    (values (v! (cam-it (+ (v! (* corner-pos particle-size) 0.8)
+			   (* (v! (s~ particle-position :xy) 0)
+			      spread))
+			cam)
+		1)
+    	    (* (+ corner-pos (v! 1 1)) 0.5))))
+
+(defun-g place-particle-frag ((tex-coord :vec2) &uniform (tex :sampler-2d)
+			      (rcol :vec3) (gcol :vec3) (bcol :vec3)
+			      (neg-alpha :float))
+  (let ((map (texture tex tex-coord)))
+    ;;   (- map (v! 0 0 0 neg-alpha))
+    (v! (+ (* rcol (v:x map))
+	   (* gcol (v:y map))
+	   (* bcol (v:z map)))
+	(- (v:w map) neg-alpha))))
+
+(def-g-> draw-particles-pline ()
+  #'place-particle #'place-particle-frag)
+
+(defun draw-passive-particles (psys camera texture)
+  (let* ((f2b (particle-system-front-to-back psys))
 	 (destination (if f2b
-			  (particle-system-back-gbuffer particle-system)
-			  (particle-system-front-gbuffer particle-system))))
+			  (particle-system-back-gbuffer psys)
+			  (particle-system-front-gbuffer psys))))
     (map-g #'draw-particles-pline *particle-stream*
 	   :positions (particle-gbuffer-positions destination)
 	   :tex texture
-	   :particle-size size
+	   :particle-size (particle-system-size psys)
 	   :cam (camera-ubo camera)
 	   :field-size (field-size)
-	   :rcol (aref colors 0)
-	   :gcol (aref colors 1)
-	   :bcol (aref colors 2)
-	   :neg-alpha neg-alpha)))
+	   :rcol (aref (particle-system-colors psys) 0)
+	   :gcol (aref (particle-system-colors psys) 1)
+	   :bcol (aref (particle-system-colors psys) 2)
+	   :neg-alpha (particle-system-neg-alpha psys)
+	   :spread (particle-system-spread psys))))
 
 ;;----------------------------------------------------------------
 

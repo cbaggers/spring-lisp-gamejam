@@ -16,7 +16,6 @@
 (defvar *sky-quad* nil)
 (defvar *nebula-tex* nil)
 (defvar *particle-system* nil)
-(defvar *amb-p-alpha* 0s0)
 (defvar *amb-p-size* nil)
 (defvar *amb-p-colors* nil)
 (defvar *nebula-falloff* 20s0)
@@ -24,18 +23,22 @@
 (defvar *grow-sound* nil)
 (defvar *shrink-sound* nil)
 (defvar *collision-sound* nil)
+(defvar *logo* nil)
+(defvar *temporal-draw-funcs* (ttm:make-tfunc-pool))
 
 (defun init ()
   (unless *sky-tex*
     (sdl2-mixer:init :ogg)
     (sdl2-mixer:open-audio 22050 :s16sys 1 1024)
     (sdl2-mixer:play-music (load-ogg "Psyonik_-_The_Heavens_Sing.ogg"))
-    (sdl2-mixer:volume-music 20)
+    (sdl2-mixer:volume-music 15)
 
     (setf *eat-sound* (load-wav "eat.wav"))
     (setf *grow-sound* (load-wav "grow.wav"))
     (setf *shrink-sound* (load-wav "shrink.wav"))
     (setf *collision-sound* (load-wav "collision.wav"))
+
+    (setf *logo* (load-texture "logo.png"))
 
     (init-particles)
     (skitter:listen-to λ(mouse-listener _ _1) (skitter:mouse 0) :pos)
@@ -65,6 +68,18 @@
     (setf *game-state* (make-game-state :level level :stage stage))
     (reset-player *player* level stage)
     (setup-level level)
+    (when (= level stage 0)
+      (ttm:add
+       (tlambda ()
+	 (then
+	   (before (seconds 3)
+	     (draw-quad *logo* %progress%))
+	   (before (seconds 3)
+	     (draw-quad *logo* 1s0))
+	   (before (seconds 1)
+	     (draw-quad *logo* (- 1s0 %progress%)))
+	   (once (goto-next-stage *player* *game-state*))))
+       *temporal-draw-funcs*))
     t))
 
 (defun reset-player (&optional (player *player*) level stage)
@@ -176,11 +191,12 @@
 (defun setup-level (level)
   (declare (optimize debug))
   ;; {TODO} do something with field size
-  (dbind (ptex psize palpha pcol) (passive-particle-spec level)
+  (dbind (ptex psize palpha spread pcol) (passive-particle-spec level)
     (setf *dust-tex* (load-texture ptex)
-	  *amb-p-size* psize
-	  *amb-p-alpha* palpha
-	  *amb-p-colors* (make-array 3 :initial-contents pcol)))
+	  (particle-system-neg-alpha *particle-system*) palpha
+	  (particle-system-colors *particle-system*) (make-array 3 :initial-contents pcol)
+	  (particle-system-size *particle-system*) psize
+	  (particle-system-spread *particle-system*) spread))
   ;; add new bodies from spec
   ;; {TODO} for now just dump *rocks*, later animate this
   (setf *rocks*
@@ -482,6 +498,21 @@
 	 :field-size (field-size)
 	 :nebula-falloff *nebula-falloff*))
 
+(defun-g splat-vert ((vert g-pt))
+  (values (v! (s~ (pos vert) :xy) 0.999 1.0)
+	  (tex vert)))
+
+(defun-g splat-frag ((tc :vec2) &uniform (tex :sampler-2d) (alpha :float))
+  (let ((col (texture tex tc)))
+    (v! (s~ col :xyz)
+	(* (v:w col) alpha))))
+
+(def-g-> splat ()
+  #'splat-vert #'splat-frag)
+
+(defun draw-quad (tex &optional (alpha 1s0))
+  (map-g #'splat *sky-quad* :tex tex :alpha alpha))
+
 ;;----------------------------------------------------------------------
 
 (defun update-player (&optional (player *player*))
@@ -603,29 +634,28 @@
 
 (defun draw ()
   (clear)
-  ;; (with-fbo-bound )
   (with-blending *blend*
     (with-viewport (camera-viewport *camera*)
+      (ttm:update *temporal-draw-funcs*)
+      ;;
       (draw-sky)
-      (draw-passive-particles *particle-system* *camera* *dust-tex*
-			      *amb-p-size* *amb-p-colors* *amb-p-alpha*)
       ;;
-
+      (draw-passive-particles *particle-system* *camera* *dust-tex*)
       ;;
-      (let* ((min 0.3) (max 0.4) (range (- max min))
-	     (mult (/ range (length *rocks*))))
-	(loop :for a :in *rocks* :for i :from 0 :do
-	   (draw-actor a (- max (* i mult)))))
-      ;;
-      (let* ((min 0.4) (max 0.5) (range (- max min))
-	     (mult (/ range (length *rocks*))))
-	(loop :for s :in (player-stuck *player*) :for i :from 0 :do
-	   (draw-stuck (car s) (- max (* i mult)))))
+      (when *rocks*
+	(let* ((min 0.3) (max 0.4) (range (- max min))
+	      (mult (/ range (length *rocks*))))
+	 (loop :for a :in *rocks* :for i :from 0 :do
+	    (draw-actor a (- max (* i mult)))))
+	;;
+	(let* ((min 0.4) (max 0.5) (range (- max min))
+	       (mult (/ range (length *rocks*))))
+	  (loop :for s :in (player-stuck *player*) :for i :from 0 :do
+	     (draw-stuck (car s) (- max (* i mult))))))
       ;;
       (loop :for a :in *misc-draw* :do (draw-actor a))
       ;;
-      (draw-player *player*)
-      ))
+      (draw-player *player*)))
   (swap))
 
 (defun update-rocks ()
@@ -696,9 +726,6 @@
 		  (- a)
 		  a)))
       (setf (actoroid-rotation *player*) (- a)))))
-
-(x (v2:- (v! (v:x d) (v:y d))
-	 (viewport-resolution (camera-viewport *camera*))))
 
 ;;----------------------------------------------------------------------
 
