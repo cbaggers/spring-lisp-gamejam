@@ -199,7 +199,7 @@
 (defun calc-last-stage (level stage)
   (vbind (level-inc stage)
       (floor (1- stage)
-	     (length (elt *player-journey* level)))
+	     (1- (length (elt *player-journey* level))))
     (let ((level (+ level level-inc)))
       (if (< level 0)
 	  '(0 0)
