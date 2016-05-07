@@ -24,7 +24,8 @@
 (defun init ()
   (unless *sky-tex*
     (init-particles)
-    (skitter:listen-to (lambda (x y) (mouse-listener x y)) (skitter:mouse 0) :pos)
+    (skitter:listen-to λ(mouse-listener _ _1) (skitter:mouse 0) :pos)
+    (skitter:listen-to λ(window-size-callback _ _1) (skitter:window 0) :size)
     (setf *sky-quad* (make-gpu-quad))
     (setf *camera* (make-camera))
     (setf *player* (make-player))
@@ -68,13 +69,23 @@
 	(>= (mass player) mass)))))
 
 (defun update-player-data (player level stage)
-  (dbind (_ tex &key mass speed &allow-other-keys) (player-stats level stage)
+  (dbind (_ tex &key mass speed flare &allow-other-keys) (player-stats level stage)
     (declare (ignore _))
     (setf (player-texture player) (load-texture tex))
     (setf (player-max-speed player) speed)
     (setf (actoroid-mass player) mass)
     (setf (actoroid-colors player)
 	  (get-new-colors (mapcar #'car (player-stuck player))))
+    ;; flare
+    (setf (actoroid-flare player)
+	  (loop :for f :in flare :collect
+	     (dbind (tex ratio &key (at-back t) (rotation-speed 0s0)) f
+	       (make-instance
+		'flare
+		:tex (load-texture tex)
+		:ratio ratio
+		:at-back at-back
+		:rotation-speed rotation-speed))))
     ;; these two fire off temporal lambdas
     (resize-player level stage)
     (when (player-stuck player) (remove-rocks player))
@@ -159,7 +170,8 @@
     ;; {TODO} for now just dump *rocks*, later animate this
     (setf *rocks*
 	  (loop :for spec :in (stage-bodies-spec level) :append
-	     (dbind (name tex count &key radius mass colors speed rotation) spec
+	     (dbind (name tex count &key radius mass colors speed rotation
+			  flare flare-chance-in-%) spec
 	       (loop :for i :below count :collect
 		  (make-actoroid
 		   :kind name
@@ -167,15 +179,33 @@
 		   :colors (when colors (make-array
 					 3 :initial-contents
 					 (alexandria:random-elt colors)))
-		   :position (rotate-v2
-			      (v! 0 (random (float space-field-size)))
-			      (random (* +pi+ 2)))
+		   :position (calc-starting-pos radius space-field-size
+						level 0)
 		   :velocity (rotate-v2
 			      (v! 0 (parse-speed speed))
 			      rand-rotation)
 		   :rotation (- (or rotation 0s0) rand-rotation)
 		   :mass mass
-		   :radius radius)))))))
+		   :radius radius
+		   :flare (when (and flare (< (random 100s0) flare-chance-in-%))
+			    (loop :for f :in flare :collect
+			       (dbind (tex ratio &key (at-back t)
+					   (rot-speed 0s0)) f
+				 (make-instance
+				  'flare
+				  :tex (load-texture tex)
+				  :ratio ratio
+				  :at-back at-back
+				  :rotation-speed rot-speed)))))))))))
+
+(defun calc-starting-pos (rock-radius space-field-size level stage)
+  (dbind (_ _1 &key radius &allow-other-keys) (player-stats level stage)
+    (declare (ignore _ _1))
+    (let* ((min (* (+ rock-radius radius) 4))
+	   (range (- (float space-field-size) min)))
+      (rotate-v2
+       (v! 0 (+ min (random range)))
+       (random (* +pi+ 2))))))
 
 (defun goto-next-stage (player game-state)
   (let ((last-level (game-state-level game-state))
@@ -209,27 +239,26 @@
 (defun go-back-a-stage (player game-state)
   (let ((last-level (game-state-level game-state))
 	(last-stage (game-state-stage game-state)))
-    (if (= last-level last-stage 0)
-	(bump player)
-	(dbind (level stage) (calc-last-stage last-level last-stage)
-	  ;; update the game state
-	  (setf (game-state-level game-state) level
-		(game-state-stage game-state) stage)
-	  ;; update player
-	  (update-player-data player level stage)
-	  ;; check if we need to do fancy transition
-	  (when (< level last-level)
-	    (ttm:add
-	     (tlambda ()
-	       (then
-		 (once (print "*Aww going back transition*"))
-		 (once (print "- okidokey -"))
-		 (once (setup-level level))))))))))
+    (unless (= last-level last-stage 0)
+      (dbind (level stage) (calc-last-stage last-level last-stage)
+	;; update the game state
+	(setf (game-state-level game-state) level
+	      (game-state-stage game-state) stage)
+	;; update player
+	(update-player-data player level stage)
+	;; check if we need to do fancy transition
+	(when (< level last-level)
+	  (ttm:add
+	   (tlambda ()
+	     (then
+	       (once (print "*Aww going back transition*"))
+	       (once (print "- okidokey -"))
+	       (once (setup-level level))))))))))
 
 (defun bump (player)
   (when (<= (actoroid-invincible-for-seconds player) 0s0)
     (shake-cam)
-    (setf (actoroid-invincible-for-seconds player) 2s0)))
+    (setf (actoroid-invincible-for-seconds player) 0.5)))
 
 (defparameter *game-state* (make-game-state))
 
@@ -257,11 +286,12 @@
 ;;----------------------------------------------------------------------
 
 (defun-g actor-vert ((vert g-pt) &uniform (pos :vec2) (rot :mat3)
-		     (cam cam-g :ubo) (rad :float))
+		     (cam cam-g :ubo) (rad :float) (ymod :float))
   (let* ((vpos (* rot (* (pos vert) rad))))
-    (values (v! (cam-it (+ vpos (v! pos 0))
-			cam)
-		1)
+    (values (+ (v! (cam-it (+ vpos (v! pos 0))
+			   cam)
+		   1)
+	       (v! 0 0 ymod 0))
 	    (tex vert))))
 
 (defun-g actor-replace-frag ((tc :vec2) &uniform (tex :sampler-2d)
@@ -289,10 +319,11 @@
 (def-g-> actor-replace-color-pipeline2 ()
   #'actor-vert #'actor-replace-stuck)
 
-(defun draw-actor (x)
+(defun draw-actor (x &optional (ymod 0s0))
   (declare (optimize debug))
   (map-g #'actor-replace-color-pipeline
 	 (actoroid-stream x)
+	 :ymod ymod
 	 :pos (actoroid-position x)
 	 :tex (actoroid-texture x)
 	 :rot (m3:rotation-z (actoroid-rotation x))
@@ -302,12 +333,31 @@
 	 :gcol (aref (actoroid-colors x) 1)
 	 :bcol (aref (actoroid-colors x) 2)
 	 :field-size (field-size)
-	 :falloff *nebula-falloff*))
+	 :falloff *nebula-falloff*)
+  (draw-flare x ymod))
+
+(defun draw-flare (x &optional (ymod 0s0))
+  (loop :for flare :in (actoroid-flare x) :do
+    (with-slots (tex ratio at-back-p rot rotatation-speed) flare
+      (map-g #'actor-replace-color-pipeline
+	     (actoroid-stream x)
+	     :ymod (+ ymod (if at-back-p 0s0 -0.0001))
+	     :pos (v2:- (actoroid-position x) (v! 0 0))
+	     :tex tex
+	     :rot (m3:rotation-z rot)
+	     :cam (camera-ubo *camera*)
+	     :rad (* (actoroid-radius x) ratio)
+	     :rcol (aref (actoroid-colors x) 0)
+	     :gcol (aref (actoroid-colors x) 1)
+	     :bcol (aref (actoroid-colors x) 2)
+	     :field-size (field-size)
+	     :falloff *nebula-falloff*))))
 
 (defun draw-player (x)
   (declare (optimize debug))
   (map-g #'actor-replace-color-pipeline2
 	 (actoroid-stream x)
+	 :ymod 0.1
 	 :pos (actoroid-position x)
 	 :tex (actoroid-texture x)
 	 :rot (m3:rotation-z (actoroid-rotation x))
@@ -317,13 +367,15 @@
 	 :gcol (aref (actoroid-colors x) 1)
 	 :bcol (aref (actoroid-colors x) 2)
 	 :neg-alpha (if (> (actoroid-invincible-for-seconds x) 0.0)
-			(+ 0.5 (/ (sin (* 10 (actoroid-invincible-for-seconds x))) 2))
-			0s0)))
+			(+ 0.5 (/ (sin (* 30 (actoroid-invincible-for-seconds x))) 2))
+			0s0))
+  (draw-flare x))
 
-(defun draw-stuck (x)
+(defun draw-stuck (x &optional (ymod 0s0))
   (declare (optimize debug))
   (map-g #'actor-replace-color-pipeline2
 	 (actoroid-stream x)
+	 :ymod ymod
 	 :pos (actoroid-position x)
 	 :tex (actoroid-texture x)
 	 :rot (m3:rotation-z (+ (actoroid-rotation x)
@@ -333,7 +385,8 @@
 	 :rcol (aref (actoroid-colors x) 0)
 	 :gcol (aref (actoroid-colors x) 1)
 	 :bcol (aref (actoroid-colors x) 2)
-	 :neg-alpha 0s0))
+	 :neg-alpha 0s0)
+  (draw-flare x ymod))
 
 (defun update-stuck ()
   (loop :for (s . offset) :in (player-stuck *player*) :do
@@ -381,6 +434,7 @@
 ;;----------------------------------------------------------------------
 
 (defun update-player (&optional (player *player*))
+  (update-flare-for player)
   (setf (actoroid-position player)
 	(v2:+ (actoroid-position player)
 	      (v2:*s (actoroid-velocity player) +fts+)))
@@ -435,10 +489,12 @@
 	     (if (<= (mass col-with) (mass player))
 		 (unless (> (actoroid-invincible-for-seconds col-with) 0s0)
 		   (attach-rock-to-player player col-with a))
-		 (if (null stuck)
-		     (go-back-a-stage player *game-state*)
-		     (unless (eq a player)
-		       (detach-rock-from-player player a))))))))))
+		 (progn
+		   (bump player)
+		   (if (null stuck)
+		       (go-back-a-stage player *game-state*)
+		       (unless (eq a player)
+			 (detach-rock-from-player player a)))))))))))
 
 (defun attach-rock-to-player (player rock stick-to)
   (symbol-macrolet ((stuck (player-stuck player)))
@@ -456,7 +512,7 @@
   (symbol-macrolet ((stuck (player-stuck player))
 		    (vel (actoroid-velocity rock)))
     (let ((o (actor-offset player rock)))
-      (setf (actoroid-invincible-for-seconds rock) 2s0)
+      (setf (actoroid-invincible-for-seconds rock) 1s0)
       (setf stuck (remove rock stuck :key #'car)
 	    vel (v2:*s (v2:normalize (v! (y o) (x o))) 0.3))
       (push rock *rocks*)))
@@ -494,21 +550,42 @@
       (draw-sky)
       (draw-passive-particles *particle-system* *camera* *dust-tex*
 			      *amb-p-size* *amb-p-colors* *amb-p-alpha*)
-      (draw-player *player*)
-      (loop :for a :in *rocks* :do (draw-actor a))
+      ;;
+
+      ;;
+      (let* ((min 0.3) (max 0.4) (range (- max min))
+	     (mult (/ range (length *rocks*))))
+	(loop :for a :in *rocks* :for i :from 0 :do
+	   (draw-actor a (- max (* i mult)))))
+      ;;
+      (let* ((min 0.4) (max 0.5) (range (- max min))
+	     (mult (/ range (length *rocks*))))
+	(loop :for s :in (player-stuck *player*) :for i :from 0 :do
+	   (draw-stuck (car s) (- max (* i mult)))))
+      ;;
       (loop :for a :in *misc-draw* :do (draw-actor a))
-      (loop :for s :in (player-stuck *player*) :do (draw-stuck (car s)))))
+      ;;
+      (draw-player *player*)
+      ))
   (swap))
 
 (defun update-rocks ()
   (let ((field-size (field-size)))
     (loop :for r :in *rocks* :do
+       (update-flare-for r)
        (symbol-macrolet ((pos (actoroid-position r))
 			 (vel (actoroid-velocity r)))
 	 (setf pos (v2:+ pos (v2:*s vel +fts+)))
 	 (decf (actoroid-invincible-for-seconds r) +fts+)
 	 (when (> (v2:length pos) field-size)
 	   (setf pos (v2:*s (v2:normalize pos) (- (- field-size 0.1s0)))))))))
+
+(defun update-flare-for (x)
+  (let ((flares (actoroid-flare x)))
+    (when flares
+      (loop :for f :in flares :do
+	 (with-slots (rot rotatation-speed) f
+	   (incf rot (* rotatation-speed +fts+)))))))
 
 (defun update ()
   (setf (cam-pos *camera*) (actoroid-position *player*))
@@ -572,3 +649,14 @@
 		     (v2:*s (v! (* zoom 0.04 (sin (* 10 %progress%)))
 				(* zoom 0.04 (cos (* 20 %progress%))))
 			    (- 1s0 (easing-f:in-quad %progress%))))))))))
+
+;;----------------------------------------------------------------------
+
+(defun reshape (new-dimensions)
+  (let ((new-dimensions (v! (v:x new-dimensions) (v:y new-dimensions))))
+    (print new-dimensions)
+    (update-viewport-size *camera* (v! new-dimensions))))
+
+(defun window-size-callback (event timestamp)
+  (declare (ignore timestamp))
+  (reshape (skitter:size-2d-vec event)))

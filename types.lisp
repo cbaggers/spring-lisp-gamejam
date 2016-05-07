@@ -26,7 +26,17 @@
   (rotation 0s0 :type single-float)
   (mass 1s0 :type single-float)
   (radius 1s0 :type single-float)
-  (invincible-for-seconds 0s0 :type single-float))
+  (invincible-for-seconds 0s0 :type single-float)
+  (flare nil :type (or null flare)))
+
+;;----------------------------------------------------------------------
+
+(defclass flare ()
+  ((tex :initform (error "tex must be supplied") :initarg :tex)
+   (ratio :initform 1s0 :initarg :ratio)
+   (at-back-p :initform t :initarg :at-back)
+   (rot :initform 0s0 :initarg :rotation)
+   (rotatation-speed :initform 0s0 :initarg :rotation-speed)))
 
 ;;----------------------------------------------------------------------
 
@@ -104,3 +114,9 @@
 	     (cam-g-zoom ,cam))
 	  (/ 1 (cam-g-zoom ,cam))
 	  1)))
+
+(defun update-viewport-size (camera vec2)
+  (setf (viewport-resolution (camera-viewport camera)) vec2)
+  (let ((ubo (camera-ubo camera)))
+    (with-gpu-array-as-c-array (arr (ubo-data ubo))
+      (setf (cam-g-size (aref-c arr 0)) vec2))))

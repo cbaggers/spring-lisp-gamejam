@@ -130,7 +130,7 @@
 (defun-g place-particle ((vert :vec4) &uniform (positions :sampler-2d)
 			 (cam cam-g :ubo) (field-size :float)
 			 (particle-size :float))
-  (let* ((spread-factor (* (/ 8s0 128s0) field-size))
+  (let* ((spread-factor (* (/ 8s0 1000s0) field-size))
 	 (pos-index (v!int (int (floor (v:z vert))) (int (floor (v:w vert)))))
 	 (particle-position (texel-fetch positions pos-index 0))
 	 (corner-pos (s~ vert :xy)))

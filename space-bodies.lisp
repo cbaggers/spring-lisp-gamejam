@@ -49,9 +49,21 @@
 
     ;; level 2
     ((:small-star "sun_rgb.png"
-		  :radius 400 :mass 9000 :speed 350s0)
+		  :radius 400 :mass 9000 :speed 350s0
+		  :flare (("corona_inner_rgb.png"
+			   1.4670488s0
+			   :rotation-speed 0.1)
+			  ("corona_inner_rgb.png"
+			   1.4670488s0
+			   :rotation-speed -0.1)))
      (:large-star "sun_rgb.png"
-		  :radius 600 :mass 18000 :speed 350s0))
+		  :radius 600 :mass 18000 :speed 350s0
+		  :flare (("corona_inner_rgb.png"
+			   1.4670488s0
+			   :rotation-speed 0.1)
+			  ("corona_inner_rgb.png"
+			   1.4670488s0
+			   :rotation-speed -0.1))))
 
     ;; level 3
 
@@ -151,9 +163,11 @@
 			  (,(nrgb 61 48 39)
 			    ,(nrgb 175 159 97)
 			    ,(nrgb 219 181 33))))
-     (:gas-planet "jovian_rgb.png" 1
-		  :radius 1.5 :mass 28
+     (:gas-planet "jovian_rgb.png" 3
+		  :radius 50 :mass 200
 		  :speed 30
+		  :flare (("rings_rgb.png" 1.3653333s0 :at-back nil))
+		  :flare-chance-in-% 60
 		  :colors ((,(nrgb 107 56 22)
 			     ,(nrgb 220 135 25)
 			     ,(nrgb 253 221 107))
