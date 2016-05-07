@@ -50,7 +50,8 @@
   (decel-ramp 0s0 :type single-float)
   (max-speed 1s0 :type single-float)
   (key-up-vel (v! 0 0) :type rtg-math.types:vec2)
-  (key-down-vel (v! 0 0) :type rtg-math.types:vec2))
+  (key-down-vel (v! 0 0) :type rtg-math.types:vec2)
+  (collected nil :type list))
 
 (defun make-player ()
   (dbind (name tex &key speed radius mass) (player-stats 0 0)

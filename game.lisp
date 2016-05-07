@@ -97,6 +97,8 @@
 	 (offsets (mapcar λ(v2:- (actoroid-position _)
 				 (actoroid-position player))
 			  rocks)))
+    (push (mapcar #'rock->spec rocks)
+	  (player-collected player))
     (setf *misc-draw* (append rocks *misc-draw*))
     (setf (player-stuck player) nil)
     (incf (actoroid-mass player) (reduce #'+ (mapcar #'mass rocks)))
@@ -159,44 +161,66 @@
 (defun setup-level (level)
   (declare (optimize debug))
   ;; {TODO} do something with field size
+  (dbind (ptex psize palpha pcol) (passive-particle-spec level)
+    (setf *dust-tex* (load-texture ptex)
+	  *amb-p-size* psize
+	  *amb-p-alpha* palpha
+	  *amb-p-colors* (make-array 3 :initial-contents pcol)))
+  ;; add new bodies from spec
+  ;; {TODO} for now just dump *rocks*, later animate this
+  (setf *rocks*
+	(loop :for (count spec) :in (stage-bodies-spec level) :append
+	   (loop :for i :below count :collect (spec->rock level spec)))))
+
+(defun spec->rock (level spec)
   (let ((space-field-size (elt *space-field-sizes* level))
 	(rand-rotation (random (* +pi+ 2))))
-    (dbind (ptex psize palpha pcol) (passive-particle-spec level)
-      (setf *dust-tex* (load-texture ptex)
-	    *amb-p-size* psize
-	    *amb-p-alpha* palpha
-	    *amb-p-colors* (make-array 3 :initial-contents pcol)))
-    ;; add new bodies from spec
-    ;; {TODO} for now just dump *rocks*, later animate this
-    (setf *rocks*
-	  (loop :for spec :in (stage-bodies-spec level) :append
-	     (dbind (name tex count &key radius mass colors speed rotation
-			  flare flare-chance-in-%) spec
-	       (loop :for i :below count :collect
-		  (make-actoroid
-		   :kind name
-		   :texture (load-texture tex)
-		   :colors (when colors (make-array
-					 3 :initial-contents
-					 (alexandria:random-elt colors)))
-		   :position (calc-starting-pos radius space-field-size
-						level 0)
-		   :velocity (rotate-v2
-			      (v! 0 (parse-speed speed))
-			      rand-rotation)
-		   :rotation (- (or rotation 0s0) rand-rotation)
-		   :mass mass
-		   :radius radius
-		   :flare (when (and flare (< (random 100s0) flare-chance-in-%))
-			    (loop :for f :in flare :collect
-			       (dbind (tex ratio &key (at-back t)
-					   (rot-speed 0s0)) f
-				 (make-instance
-				  'flare
-				  :tex (load-texture tex)
-				  :ratio ratio
-				  :at-back at-back
-				  :rotation-speed rot-speed)))))))))))
+    (dbind (name tex &key radius mass colors speed rotation
+		 flare flare-chance-in-%) spec
+      (make-actoroid
+       :kind name
+       :texture (if (sampler-p tex)
+		    tex
+		    (load-texture tex))
+       :colors (when colors (make-array
+			     3 :initial-contents
+			     (alexandria:random-elt colors)))
+       :position (calc-starting-pos radius space-field-size
+				    level 0)
+       :velocity (rotate-v2
+		  (v! 0 (parse-speed speed))
+		  rand-rotation)
+       :rotation (- (or rotation 0s0) rand-rotation)
+       :mass mass
+       :radius radius
+       :flare (when (and flare (< (random 100s0) flare-chance-in-%))
+		(loop :for f :in flare :collect
+		   (dbind (tex ratio &key (at-back t)
+			       (rot-speed 0s0)) f
+		     (make-instance
+		      'flare
+		      :tex (load-texture tex)
+		      :ratio ratio
+		      :at-back at-back
+		      :rotation-speed rot-speed))))))))
+
+(defun rock->spec (rock)
+  (let ((speed (* (v2:length (actoroid-velocity rock)) 2))
+	(flare (actoroid-flare rock)))
+    (list (actoroid-kind rock)
+	  (actoroid-texture rock)
+	  :radius (actoroid-radius rock)
+	  :mass (actoroid-mass rock)
+	  :rotation (actoroid-rotation rock)
+	  :speed (cons speed speed)
+	  :colors (list (map 'list #'identity
+			     (actoroid-colors (first *rocks*))))
+	  :flare (when flare
+		   (loop :for f :in flare :collect
+		      (with-slots (tex ratio at-back-p rotatation-speed) f
+			(list tex ratio :at-back at-back-p
+			      :rotation-speed rotatation-speed))))
+	  :flare-chance-in-% (when flare 100s0))))
 
 (defun calc-starting-pos (rock-radius space-field-size level stage)
   (dbind (_ _1 &key radius &allow-other-keys) (player-stats level stage)
@@ -246,6 +270,8 @@
 	      (game-state-stage game-state) stage)
 	;; update player
 	(update-player-data player level stage)
+	;;
+	(pop-collected-rocks player level)
 	;; check if we need to do fancy transition
 	(when (< level last-level)
 	  (ttm:add
@@ -254,6 +280,14 @@
 	       (once (print "*Aww going back transition*"))
 	       (once (print "- okidokey -"))
 	       (once (setup-level level))))))))))
+
+(defun pop-collected-rocks (player level)
+  (let ((released (mapcar λ(spec->rock level _)
+			  (pop (player-collected player)))))
+    (loop :for r :in released :do
+       (setf (actoroid-position r) (actoroid-position player)
+	     (actoroid-invincible-for-seconds r) 2s0))
+    (setf *rocks* (append released *rocks*))))
 
 (defun bump (player)
   (when (<= (actoroid-invincible-for-seconds player) 0s0)
@@ -550,6 +584,7 @@
 
 (defun draw ()
   (clear)
+  ;; (with-fbo-bound )
   (with-blending *blend*
     (with-viewport (camera-viewport *camera*)
       (draw-sky)
@@ -634,13 +669,17 @@
   (defun mouse-listener (event timestamp)
     (setf last-timestamp timestamp)
     (let* ((d (skitter:xy-pos-vec event))
-	   (v (v2:normalize (v! (- (v:x d) 400)
-				(- (- (v:y d) 300)))))
+	   (res (viewport-resolution (camera-viewport *camera*)))
+	   (v (v2:normalize (v! (- (v:x d) (/ (v:x res) 2s0))
+				(- (- (v:y d) (/ (v:y res) 2s0))))))
 	   (a (acos (v2:dot (v! 0 1) v)))
 	   (a (if (< (x v) 0)
 		  (- a)
 		  a)))
       (setf (actoroid-rotation *player*) (- a)))))
+
+(x (v2:- (v! (v:x d) (v:y d))
+	 (viewport-resolution (camera-viewport *camera*))))
 
 ;;----------------------------------------------------------------------
 
