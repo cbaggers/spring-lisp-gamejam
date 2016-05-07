@@ -40,7 +40,7 @@
   (decel-ramp 0s0 :type single-float)
   (max-speed 1s0 :type single-float)
   (key-up-vel (v! 0 0) :type rtg-math.types:vec2)
-  (key-down-vel 0s0 :type rtg-math.types:vec2))
+  (key-down-vel (v! 0 0) :type rtg-math.types:vec2))
 
 (defun make-player ()
   (dbind (name tex &key speed radius mass) (player-stats 0 0)
@@ -69,6 +69,7 @@
 (deftclass (camera (:constructor %make-camera))
   (ubo (make-ubo (list (v! 0 0) (v! 800 600) 1s0) 'cam-g)
        :type ubo)
+  (shake (v! 0 0) :type rtg-math.types:vec2)
   (%zoom 10s0)
   (viewport (make-viewport '(800 600))
 	    :type viewport))

@@ -227,7 +227,8 @@
 
 (defun bump (player)
   (when (<= (actoroid-invincible-for-seconds player) 0s0)
-    (setf (actoroid-invincible-for-seconds player) 3s0)))
+    (shake-cam)
+    (setf (actoroid-invincible-for-seconds player) 2s0)))
 
 (defparameter *game-state* (make-game-state))
 
@@ -351,9 +352,7 @@
 (defun update-player (&optional (player *player*))
   (setf (actoroid-position player)
 	(v2:+ (actoroid-position player)
-	      (actoroid-velocity player)
-	      ;;(v2:/s (actoroid-velocity player) 60s0)
-	      ))
+	      (v2:*s (actoroid-velocity player) +fts+)))
   (decf (actoroid-invincible-for-seconds player) +fts+)
   (setf (actoroid-velocity player)
 	(v2:- (actoroid-velocity player)
@@ -475,7 +474,7 @@
     (loop :for r :in *rocks* :do
        (symbol-macrolet ((pos (actoroid-position r))
 			 (vel (actoroid-velocity r)))
-	 (setf pos (v2:+ pos vel))
+	 (setf pos (v2:+ pos (v2:*s vel +fts+)))
 	 (decf (actoroid-invincible-for-seconds r) +fts+)
 	 (when (> (v2:length pos) field-size)
 	   (setf pos (v2:*s (v2:normalize pos) (- (- field-size 0.1s0)))))))))
@@ -531,3 +530,14 @@
       (setf (actoroid-rotation *player*) (- a)))))
 
 ;;----------------------------------------------------------------------
+
+(defun shake-cam (&optional (camera *camera*))
+  (let ((zoom (zoom camera)))
+    (ttm:add
+     (tlambda ()
+       (before (seconds 0.5)
+	 (setf (cam-pos camera)
+	       (v2:+ (cam-pos camera)
+		     (v2:*s (v! (* zoom 0.04 (sin (* 10 %progress%)))
+				(* zoom 0.04 (cos (* 20 %progress%))))
+			    (- 1s0 (easing-f:in-quad %progress%))))))))))
