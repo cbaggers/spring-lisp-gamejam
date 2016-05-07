@@ -541,6 +541,8 @@
   (setf (actoroid-velocity player)
 	(v2:- (actoroid-velocity player)
 	      (v2:*s (actoroid-velocity player) (* 0.95 +fts+))))
+  (when (skitter:key-down-p key.escape)
+    (reset-game 0 0))
   ;; accelerate when mouse down
   (if (skitter:mouse-down-p mouse.left)
       ;; accelerate
@@ -728,7 +730,9 @@
       (setf running nil)
       (format t "-kepler stopped-~%"))
     t)
-  (defun stop-kepler () (setf running nil)))
+  (defun stop-kepler ()
+    (sdl2-mixer:halt-music)
+    (setf running nil)))
 
 ;;----------------------------------------------------------------------
 
