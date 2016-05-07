@@ -8,7 +8,7 @@
 ;; "rings_rgb.png"
 
 (defparameter *ambient-particles*
-  `(("star_02.png" 0.4 0 (,(nrgb 107 56 22)
+  `(("star_02.png" 0.7 0 (,(nrgb 107 56 22)
 			   ,(nrgb 220 135 25)
 			   ,(nrgb 253 221 107)))
     ("asteroid_rgb.png" 8 0.97 (,(nrgb 107 56 22)

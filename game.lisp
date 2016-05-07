@@ -19,6 +19,7 @@
 (defvar *amb-p-alpha* 0s0)
 (defvar *amb-p-size* nil)
 (defvar *amb-p-colors* nil)
+(defvar *nebula-falloff* 20s0)
 
 (defun init ()
   (unless *sky-tex*
@@ -263,16 +264,15 @@
 		1)
 	    (tex vert))))
 
-(defun-g actor-frag ((tc :vec2) &uniform (tex :sampler-2d) (tint :vec3))
-  (+ (texture tex tc) (v! tint 0)))
-
 (defun-g actor-replace-frag ((tc :vec2) &uniform (tex :sampler-2d)
-			     (rcol :vec3) (gcol :vec3) (bcol :vec3))
-  (let ((map (texture tex tc)))
+			     (rcol :vec3) (gcol :vec3) (bcol :vec3)
+			     (field-size :float) (falloff :float) (pos :vec2))
+  (let ((map (texture tex tc))
+	(f (/ (min falloff (max 0s0 (- (length pos) (- field-size falloff)))) falloff)))
     (v! (+ (* rcol (v:x map))
 	   (* gcol (v:y map))
 	   (* bcol (v:z map)))
-	(v:w map))))
+	(* (v:w map) (- 1 f)))))
 
 (def-g-> actor-replace-color-pipeline ()
   #'actor-vert #'actor-replace-frag)
@@ -288,7 +288,9 @@
 	 :rad (actoroid-radius x)
 	 :rcol (aref (actoroid-colors x) 0)
 	 :gcol (aref (actoroid-colors x) 1)
-	 :bcol (aref (actoroid-colors x) 2)))
+	 :bcol (aref (actoroid-colors x) 2)
+	 :field-size (field-size)
+	 :falloff *nebula-falloff*))
 
 (defun draw-stuck (x)
   (declare (optimize debug))
@@ -302,7 +304,8 @@
 	 :rad (actoroid-radius x)
 	 :rcol (aref (actoroid-colors x) 0)
 	 :gcol (aref (actoroid-colors x) 1)
-	 :bcol (aref (actoroid-colors x) 2)))
+	 :bcol (aref (actoroid-colors x) 2)
+	 :falloff (* (field-size) 10)))
 
 (defun update-stuck ()
   (loop :for (s . offset) :in (player-stuck *player*) :do
@@ -318,19 +321,18 @@
 	  (s~ (pos vert) :xy)))
 
 (defun-g sky-frag ((tc :vec2) (pos :vec2) &uniform (tex :sampler-2d) (nebula :sampler-2d)
-		   (cam cam-g :ubo) (field-size :float))
+		   (cam cam-g :ubo) (field-size :float) (nebula-falloff :float))
   (let* ((screen-ratio (v! (/ (v:x (cam-g-size cam))
 			      (v:y (cam-g-size cam)))
 			   1))
 	 (pixel-pos (+ (s~ (cam-g-position cam) :xy)
 		       (* (* pos screen-ratio)
 			  (cam-g-zoom cam))))
-	 (transition-dist 10s0)
 	 (dist (- (length pixel-pos)
 		  field-size
-		  transition-dist))
-	 (factor (/ (min (max dist 0s0) transition-dist)
-		    transition-dist)))
+		  nebula-falloff))
+	 (factor (/ (min (max dist 0s0) nebula-falloff)
+		    nebula-falloff)))
     (mix (* (texture tex tc) 0.65)
 	 (texture nebula tc)
 	 factor)))
@@ -345,7 +347,8 @@
 	 :nebula *nebula-tex*
 	 :player-pos (actoroid-position *player*)
 	 :cam (camera-ubo *camera*)
-	 :field-size (field-size)))
+	 :field-size (field-size)
+	 :nebula-falloff *nebula-falloff*))
 
 ;;----------------------------------------------------------------------
 
