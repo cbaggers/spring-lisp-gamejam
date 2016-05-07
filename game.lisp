@@ -64,6 +64,9 @@
 		 (cffi:mem-aref ptr :float 1) (- (random 0.01) 0.005)
 		 (cffi:mem-aref ptr :float 2) 0s0)))
 
+    ;; bloom
+    (init-bloom-fbos (viewport-resolution (camera-viewport *camera*)))
+
     ;; input
     (skitter:listen-to λ(mouse-listener _ _1) (skitter:mouse 0) :pos)
     (skitter:listen-to λ(window-size-callback _ _1) (skitter:window 0) :size)

@@ -20,5 +20,6 @@
 	       (:file "helpers")
 	       (:file "types")
 	       (:file "passive-particles")
+	       (:file "bloom")
 	       (:file "space-bodies")
                (:file "game")))

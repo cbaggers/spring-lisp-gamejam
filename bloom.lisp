@@ -39,8 +39,8 @@
 			(t2 :sampler-2d) (t3 :sampler-2d) (scale-effect :float))
   (+ (* (texture t0 (* tc (v! 1 -1))) 1)
      (* (texture t1 tc) scale-effect)
-     (* (texture t2 tc) scale-effect)
-     (* (texture t3 tc) scale-effect)))
+     (* (texture t2 tc) (/ scale-effect 2))
+     (* (texture t3 tc) (/ scale-effect 4))))
 
 (def-g-> bloom-combine ()
   #'bloom-vert #'bloom-fourtex)
@@ -49,7 +49,18 @@
 
 (defvar %bloom-fbos nil)
 
+(defun bloom-clear ()
+  (clear (bloom-data-c0 %bloom-fbos))
+  (clear (bloom-data-c1 %bloom-fbos))
+  (clear (bloom-data-c2 %bloom-fbos))
+  (clear (bloom-data-c3 %bloom-fbos))
+  (clear (bloom-data-h0 %bloom-fbos))
+  (clear (bloom-data-h1 %bloom-fbos))
+  (clear (bloom-data-h2 %bloom-fbos))
+  (clear (bloom-data-h3 %bloom-fbos)))
+
 (defun bloom (stream texture bloom-factor)
+  (bloom-clear)
   (map-g-into (bloom-data-c0 %bloom-fbos) #'bloom-blit stream :tex texture)
   (map-g-into (bloom-data-c1 %bloom-fbos) #'bloom-blit stream :tex texture)
   (map-g-into (bloom-data-c2 %bloom-fbos) #'bloom-blit stream :tex texture)
