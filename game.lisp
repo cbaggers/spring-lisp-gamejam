@@ -16,8 +16,6 @@
 (defvar *sky-quad* nil)
 (defvar *nebula-tex* nil)
 (defvar *particle-system* nil)
-(defvar *amb-p-size* nil)
-(defvar *amb-p-colors* nil)
 (defvar *nebula-falloff* 20s0)
 (defvar *eat-sound* nil)
 (defvar *grow-sound* nil)
@@ -25,40 +23,59 @@
 (defvar *collision-sound* nil)
 (defvar *logo* nil)
 (defvar *temporal-draw-funcs* (ttm:make-tfunc-pool))
+(defvar *first-pass-fbo* nil)
+(defvar *first-pass-sampler* nil)
+
+(defun-g test ((x :vec2) &uniform (y (:vec2 10)))
+  (aref y 0)
+  (v! 0 0 0 0))
 
 (defun init ()
   (unless *sky-tex*
+    ;;  sounds
     (sdl2-mixer:init :ogg)
     (sdl2-mixer:open-audio 22050 :s16sys 1 1024)
     (sdl2-mixer:play-music (load-ogg "Psyonik_-_The_Heavens_Sing.ogg"))
     (sdl2-mixer:volume-music 15)
-
     (setf *eat-sound* (load-wav "eat.wav"))
     (setf *grow-sound* (load-wav "grow.wav"))
     (setf *shrink-sound* (load-wav "shrink.wav"))
     (setf *collision-sound* (load-wav "collision.wav"))
 
-    (setf *logo* (load-texture "logo.png"))
-
-    (init-particles)
-    (skitter:listen-to λ(mouse-listener _ _1) (skitter:mouse 0) :pos)
-    (skitter:listen-to λ(window-size-callback _ _1) (skitter:window 0) :size)
-    (setf *sky-quad* (make-gpu-quad))
+    ;; graphics
     (setf *camera* (make-camera))
-    (setf *player* (make-player))
     (setf *blend* (make-blending-params))
-    (setf *dust-tex* (load-texture "star_02.png"))
+    (with-viewport (camera-viewport *camera*)
+      (setf *first-pass-fbo* (make-fbo 0 :d))
+      (setf *first-pass-sampler* (sample (attachment-tex *first-pass-fbo* 0))))
+
+    ;; game entities
+    (setf *sky-quad* (make-gpu-quad))
+    (setf *player* (make-player))
+
+    ;; particles
+    (init-particles)
     (setf *particle-system* (make-particle-system))
-    (setf *nebula-tex* (load-texture "nebula.jpg"))
-    (setf *amb-p-size* 0.4)
+
     (populate-velocities-using-func
 	 (lambda (ptr x y)
 	   (declare (ignorable x y))
 	   (setf (cffi:mem-aref ptr :float 0) (- (random 0.01) 0.005)
 		 (cffi:mem-aref ptr :float 1) (- (random 0.01) 0.005)
 		 (cffi:mem-aref ptr :float 2) 0s0)))
-    (reset-game 0 0)
-    (setf *sky-tex* (load-texture "space_bg.png"))))
+
+    ;; input
+    (skitter:listen-to λ(mouse-listener _ _1) (skitter:mouse 0) :pos)
+    (skitter:listen-to λ(window-size-callback _ _1) (skitter:window 0) :size)
+
+    ;; media
+    (setf *logo* (load-texture "logo.png"))
+    (setf *dust-tex* (load-texture "star_02.png"))
+    (setf *nebula-tex* (load-texture "nebula.jpg"))
+    (setf *sky-tex* (load-texture "space_bg.png"))
+
+    ;; and begin
+    (reset-game 0 0)))
 
 ;;----------------------------------------------------------------------
 
@@ -633,30 +650,34 @@
 			  +fts+))))))
 
 (defun draw ()
-  (clear)
-  (with-blending *blend*
-    (with-viewport (camera-viewport *camera*)
-      (ttm:update *temporal-draw-funcs*)
-      ;;
-      (draw-sky)
-      ;;
-      (draw-passive-particles *particle-system* *camera* *dust-tex*)
-      ;;
-      (when *rocks*
-	(let* ((min 0.3) (max 0.4) (range (- max min))
-	      (mult (/ range (length *rocks*))))
-	 (loop :for a :in *rocks* :for i :from 0 :do
-	    (draw-actor a (- max (* i mult)))))
+  (with-viewport (camera-viewport *camera*)
+    (with-blending *blend*
+      (with-fbo-bound (*first-pass-fbo* :with-blending nil :with-viewport nil)
+	(clear)
+	(ttm:update *temporal-draw-funcs*)
 	;;
-	(let* ((min 0.4) (max 0.5) (range (- max min))
-	       (mult (/ range (length *rocks*))))
-	  (loop :for s :in (player-stuck *player*) :for i :from 0 :do
-	     (draw-stuck (car s) (- max (* i mult))))))
-      ;;
-      (loop :for a :in *misc-draw* :do (draw-actor a))
-      ;;
-      (draw-player *player*)))
-  (swap))
+	(draw-sky)
+	;;
+	(draw-passive-particles *particle-system* *camera* *dust-tex*)
+	;;
+	(when *rocks*
+	  (let* ((min 0.3) (max 0.4) (range (- max min))
+		 (mult (/ range (length *rocks*))))
+	    (loop :for a :in *rocks* :for i :from 0 :do
+	       (draw-actor a (- max (* i mult)))))
+	  ;;
+	  (let* ((min 0.4) (max 0.5) (range (- max min))
+		 (mult (/ range (length *rocks*))))
+	    (loop :for s :in (player-stuck *player*) :for i :from 0 :do
+	       (draw-stuck (car s) (- max (* i mult))))))
+	;;
+	(loop :for a :in *misc-draw* :do (draw-actor a))
+	;;
+	(draw-player *player*)
+	(swap)))
+    (clear)
+    (draw-quad *first-pass-sampler* 1s0)
+    (swap)))
 
 (defun update-rocks ()
   (let ((field-size (field-size)))
@@ -745,7 +766,11 @@
 (defun reshape (new-dimensions)
   (let ((new-dimensions (v! (v:x new-dimensions) (v:y new-dimensions))))
     (print new-dimensions)
-    (update-viewport-size *camera* (v! new-dimensions))))
+    (update-viewport-size *camera* (v! new-dimensions))
+    (free *first-pass-fbo*)
+    (with-viewport (camera-viewport *camera*)
+      (setf *first-pass-fbo* (make-fbo 0 :d))
+      (setf *first-pass-sampler* (sample (attachment-tex *first-pass-fbo* 0))))))
 
 (defun window-size-callback (event timestamp)
   (declare (ignore timestamp))
