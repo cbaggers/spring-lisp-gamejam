@@ -47,27 +47,6 @@
 			    (particle-gbuffer-velocities back)))))
       result)))
 
-(defun reset-particle-system (sys)
-  (let ((front (particle-system-front-gbuffer sys))
-	(back (particle-system-back-gbuffer sys)))
-    (push-g *starting-positions*
-	    (sampler-texture (particle-gbuffer-positions front)))
-    (push-g *starting-positions*
-	    (sampler-texture (particle-gbuffer-positions back)))
-
-    (push-g *starting-velocities*
-	    (sampler-texture (particle-gbuffer-velocities front)))
-    (push-g *starting-velocities*
-	    (sampler-texture (particle-gbuffer-velocities back)))
-    sys))
-
-(defmethod free ((object particle-system))
-  (free (particle-system-front-gbuffer object))
-  (free (particle-system-back-gbuffer object)))
-
-(defmethod free ((object particle-gbuffer))
-  (free (particle-gbuffer-positions object))
-  (free (particle-gbuffer-velocities object)))
 
 ;;----------------------------------------------------------------
 
@@ -77,13 +56,12 @@
 	  (apply #'make-particle-stream *particle-resolution*))
     (let ((arr (make-c-array nil :dimensions *particle-resolution*
 			     :element-type :vec3)))
-      (dbind (w h) *particle-resolution*
-	(labels ((init (ptr x y)
-		   ;;(declare (ignore x y))
-		   (setf (cffi:mem-aref ptr :float 0) (+ -10s0 (/ x (/ w 20s0)))
-			 (cffi:mem-aref ptr :float 1) (+ -10s0 (/ y (/ h 20s0)))
-			 (cffi:mem-aref ptr :float 2) 0s0)))
-	  (setf *starting-positions* (across-c-ptr #'init arr)))))
+      (labels ((init (ptr x y)
+		 (declare (ignore x y))
+		 (setf (cffi:mem-aref ptr :float 0) (+ -500s0 (random 1000s0))
+		       (cffi:mem-aref ptr :float 1) (+ -500s0 (random 1000s0))
+		       (cffi:mem-aref ptr :float 2) 0s0)))
+	(setf *starting-positions* (across-c-ptr #'init arr))))
     t))
 
 (defun populate-velocities-using-func (ptr-x-y-func)

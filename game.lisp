@@ -26,6 +26,8 @@
 
 (defun init ()
   (unless *sky-tex*
+    (unless cepl.context:*gl-context*
+      (cepl:repl))
     ;;  sounds
     (sdl2-mixer:init :ogg)
     (sdl2-mixer:open-audio 22050 :s16sys 1 1024)
@@ -39,10 +41,6 @@
     ;; graphics
     (setf *camera* (make-camera))
     (setf *blend* (make-blending-params))
-    (with-viewport (camera-viewport *camera*)
-      (setf *first-pass-fbo* (make-fbo 0 :d))
-      (setf *first-pass-sampler* (sample (attachment-tex *first-pass-fbo* 0)))
-      (setf *bright-bits-sampler* (sample (attachment-tex *first-pass-fbo* 1))))
 
     ;; game entities
     (setf *sky-quad* (make-gpu-quad))
