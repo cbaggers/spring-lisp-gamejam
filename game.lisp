@@ -25,6 +25,7 @@
 (defvar *temporal-draw-funcs* (ttm:make-tfunc-pool))
 (defvar *first-pass-fbo* nil)
 (defvar *first-pass-sampler* nil)
+(defvar *bright-bits-sampler* nil)
 
 (defun-g test ((x :vec2) &uniform (y (:vec2 10)))
   (aref y 0)
@@ -47,7 +48,8 @@
     (setf *blend* (make-blending-params))
     (with-viewport (camera-viewport *camera*)
       (setf *first-pass-fbo* (make-fbo 0 :d))
-      (setf *first-pass-sampler* (sample (attachment-tex *first-pass-fbo* 0))))
+      (setf *first-pass-sampler* (sample (attachment-tex *first-pass-fbo* 0)))
+      (setf *bright-bits-sampler* (sample (attachment-tex *first-pass-fbo* 1))))
 
     ;; game entities
     (setf *sky-quad* (make-gpu-quad))
@@ -662,32 +664,29 @@
   ;;   (print fff)
   ;;   (setf fff 0))
   (with-viewport (camera-viewport *camera*)
-    (with-blending *blend*
-      (with-fbo-bound (*first-pass-fbo* :with-blending nil :with-viewport nil)
-	(clear)
+    (with-fbo-bound (*first-pass-fbo* :with-viewport nil)
+      (clear)
+      (ttm:update *temporal-draw-funcs*)
+      (draw-sky)
+      (draw-passive-particles *particle-system* *camera* *dust-tex*)
+      ;;
+      (when *rocks*
+	(let* ((min 0.3) (max 0.4) (range (- max min))
+	       (mult (/ range (length *rocks*))))
+	  (loop :for a :in *rocks* :for i :from 0 :do
+	     (draw-actor a (- max (* i mult)))))
+	;;
+	(let* ((min 0.4) (max 0.5) (range (- max min))
+	       (mult (/ range (length *rocks*))))
+	  (loop :for s :in (player-stuck *player*) :for i :from 0 :do
+	     (draw-stuck (car s) (- max (* i mult))))))
 
-	(ttm:update *temporal-draw-funcs*)
-	(draw-sky)
-	(draw-passive-particles *particle-system* *camera* *dust-tex*)
-
-	(when *rocks*
-	  (let* ((min 0.3) (max 0.4) (range (- max min))
-		 (mult (/ range (length *rocks*))))
-	    (loop :for a :in *rocks* :for i :from 0 :do
-	       (draw-actor a (- max (* i mult)))))
-	  ;;
-	  (let* ((min 0.4) (max 0.5) (range (- max min))
-		 (mult (/ range (length *rocks*))))
-	    (loop :for s :in (player-stuck *player*) :for i :from 0 :do
-	       (draw-stuck (car s) (- max (* i mult))))))
-
-	(loop :for a :in *misc-draw* :do (draw-actor a))
-
-	(draw-player *player*)))
+      (loop :for a :in *misc-draw* :do (draw-actor a))
+      (draw-player *player*))
     (clear)
+    ;;(draw-sky)
     (bloom (get-gpu-quad) *first-pass-sampler* (abs (sin (* (get-internal-real-time) 0.001))))
-
-    ;;(draw-quad *first-pass-sampler* 1s0 -1s0)
+    (draw-quad *first-pass-sampler* 1s0 -1s0)
     (swap)))
 
 (defun update-rocks ()

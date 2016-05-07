@@ -81,10 +81,11 @@
 	      :tex (bloom-data-sh2 %bloom-fbos) :offset (v! 0 (/ 1.2 128)))
   (map-g-into (bloom-data-c3 %bloom-fbos) #'bloom-smooth stream
 	      :tex (bloom-data-sh3 %bloom-fbos) :offset (v! 0 (/ 1.2 64)))
-  (map-g #'bloom-combine stream
-	 :t0 texture :t1 (bloom-data-sc0 %bloom-fbos)
-	 :t2 (bloom-data-sc1 %bloom-fbos) :t3 (bloom-data-sc2 %bloom-fbos)
-	 :scale-effect bloom-factor))
+  ;; (map-g #'bloom-combine stream
+  ;; 	 :t0 texture :t1 (bloom-data-sc0 %bloom-fbos)
+  ;; 	 :t2 (bloom-data-sc1 %bloom-fbos) :t3 (bloom-data-sc2 %bloom-fbos)
+  ;; 	 :scale-effect bloom-factor)
+  )
 
 ;;- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
