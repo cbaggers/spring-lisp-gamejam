@@ -92,7 +92,7 @@
   (let* ((position (texture positions tex-coord))
 	 (velocity (texture velocities tex-coord))
 	 (new (+ (v! (s~ position :xy) 0 0)
-		 (v! (s~ velocity :xy) 0 0))))
+		 (v! (* 3 (s~ velocity :xy)) 0 0))))
     (v! (- (mod (+ field-size (v:x new)) (* 2 field-size)) field-size)
 	(- (mod (+ field-size (v:y new)) (* 2 field-size)) field-size))))
 

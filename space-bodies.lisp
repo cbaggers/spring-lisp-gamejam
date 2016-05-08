@@ -30,22 +30,22 @@
     (30.0 34.0)
     (48.0 60.0 78.0)
     (280.0 320.0 400.0 690.0)
-    (800.0)))
+    (1500.0)))
 
 (defparameter *space-field-sizes*
   #(50s0
     50s0
     200s0
     1000s0
-    2000s0))
+    12000s0))
 
 (defparameter *player-journey*
   `(;; title screen
     ((:mote "star_01.png"
-	    :radius 1 :mass 2 :speed 60s0))
+	    :radius 1 :mass 2 :speed 20s0))
     ;; level 0
     ((:tiny-asteroid "asteroid_rgb.png"
-		     :radius 1 :mass 2 :speed 60s0)
+		     :radius 1 :mass 2 :speed 20s0)
      (:medium-asteroid "asteroid_rgb.png"
 		       :radius 2 :mass 6 :speed 60s0))
     ;; level 1
@@ -56,18 +56,20 @@
      (:planetoid "rocky_planet_rgb.png"
 		 :radius 8 :mass 28 :speed 60s0))
     ;; level 2
-    ((:small-rocky-planet "rocky_planet_rgb.png"
-			  :radius 16 :mass 40 :speed 180s0)
+    ((:planetoid "rocky_planet_rgb.png"
+		 :radius 12 :mass 100 :speed 100s0)
+     (:small-rocky-planet "rocky_planet_rgb.png"
+			  :radius 16 :mass 400  :speed 180s0)
      (:medium-rocky-planet "rocky_planet_rgb.png"
-			   :radius 32 :mass 80 :speed 180s0)
+			   :radius 32 :mass 8000 :speed 180s0)
      (:gas-planet "jovian_rgb.png"
-		  :radius 64 :mass 160 :speed 180s0)
+		  :radius 64 :mass 20000 :speed 180s0)
      (:gas-giant "jovian_rgb.png"
-		 :radius 192 :mass 480 :speed 180s0))
+		 :radius 192 :mass 50000 :speed 180s0))
 
     ;; level 3
     ((:small-star "sun_rgb.png"
-		  :radius 400 :mass 8000 :speed 350s0
+		  :radius 400 :mass 80000 :speed 350s0
 		  :flare (("corona_inner_rgb.png"
 			   1.4670488s0
 			   :rotation-speed 0.1)
@@ -75,7 +77,7 @@
 			   1.4670488s0
 			   :rotation-speed -0.1)))
      (:large-star "sun_rgb.png"
-		  :radius 600 :mass 18000 :speed 350s0
+		  :radius 600 :mass 180000 :speed 350s0
 		  :flare (("corona_inner_rgb.png"
 			   1.4670488s0
 			   :rotation-speed 0.1)
@@ -95,7 +97,7 @@
     ;; level 0
     ((10 (:tiny-asteroid "asteroid_rgb.png"
 			 :radius 1 :mass 1
-			 :speed (10 . 30)
+			 :speed (5 . 15)
 			 :colors ((,(nrgb 84 63 41)
 				    ,(nrgb 150 123 95)
 				    ,(nrgb 255 199 140))
@@ -108,7 +110,7 @@
     ;; level 1
     ((60 (:tiny-asteroid "asteroid_rgb.png"
 			 :radius 1 :mass 1
-			 :speed (10 . 30)
+			 :speed (5 . 15)
 			 :colors ((,(nrgb 84 63 41)
 				    ,(nrgb 150 123 95)
 				    ,(nrgb 255 199 140))
@@ -122,7 +124,7 @@
      (50 (:comet "comet_rgb.png"
 		 :radius 1.5 :mass 28
 		 :rotation ,(/ +pi+ 2)
-		 :speed (45 . 60)
+		 :speed (22 . 30)
 		 :colors ((,(nrgb 9 83 145)
 			    ,(nrgb 94 224 238)
 			    ,(nrgb 210 255 253))
@@ -145,7 +147,7 @@
     (;; level 2
      (30 (:planetoid "rocky_planet_rgb.png"
 		     :radius 8 :mass 28
-		     :speed 30
+		     :speed 20
 		     :colors ((,(nrgb 39 61 55)
 				,(nrgb 97 175 175)
 				,(nrgb 183 233 96))
@@ -156,7 +158,7 @@
 				,(nrgb 175 159 97)
 				,(nrgb 219 181 33)))))
      (50 (:comet "comet_rgb.png"
-		 :radius 8 :mass 28
+		 :radius 8 :mass 30
 		 :rotation ,(/ +pi+ 2)
 		 :speed (45 . 60)
 		 :colors ((,(nrgb 9 83 145)
@@ -166,7 +168,7 @@
 			    ,(nrgb 207 105 222)
 			    ,(nrgb 244 202 249)))))
      (30 (:small-rocky-planet "rocky_planet_rgb.png"
-			      :radius 16 :mass 40
+			      :radius 16 :mass 400
 			      :speed 30
 			      :colors ((,(nrgb 39 61 55)
 					 ,(nrgb 97 175 175)
@@ -178,7 +180,7 @@
 					 ,(nrgb 175 159 97)
 					 ,(nrgb 219 181 33)))))
      (10 (:medium-rocky-planet "rocky_planet_rgb.png"
-			       :radius 32 :mass 80
+			       :radius 32 :mass 8000
 			       :speed 30
 			       :colors ((,(nrgb 39 61 55)
 					  ,(nrgb 97 175 175)
@@ -190,7 +192,7 @@
 					  ,(nrgb 175 159 97)
 					  ,(nrgb 219 181 33)))))
      (3 (:gas-planet "jovian_rgb.png"
-		     :radius 50 :mass 900
+		     :radius 50 :mass 20000
 		     :speed 30
 		     :flare (("rings_rgb.png" 1.3653333s0 :at-back nil))
 		     :flare-chance-in-% 60
@@ -209,7 +211,7 @@
 
     (;; level 3
      (1 (:gas-planet "jovian_rgb.png"
-		     :radius 1.5 :mass 2000
+		     :radius 1.5 :mass 50000
 		     :speed 30
 		     :colors ((,(nrgb 107 56 22)
 				,(nrgb 220 135 25)

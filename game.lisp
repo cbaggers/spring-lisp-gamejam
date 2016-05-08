@@ -189,14 +189,10 @@
       (unless (>= level (length *player-journey*))
 	(list level stage)))))
 
-(defun calc-last-stage (level stage)
-  (vbind (level-inc stage)
-      (floor (1- stage)
-	     (1- (length (elt *player-journey* level))))
-    (let ((level (+ level level-inc)))
-      (if (< level 0)
-	  '(0 0)
-	  (list level stage)))))
+(defun calc-last-stage (l s)
+  (let* ((nl (if (= s 0) (- l 1) l))
+	 (ns (if (= nl l) (- s 1) (- (length (elt *player-journey* nl)) 1))))
+    (list nl ns)))
 
 (defun setup-level (level)
   (declare (optimize debug))
@@ -266,7 +262,7 @@
 (defun calc-starting-pos (rock-radius space-field-size level stage)
   (dbind (_ _1 &key radius &allow-other-keys) (player-stats level stage)
     (declare (ignore _ _1))
-    (let* ((min (* (+ rock-radius radius) 4))
+    (let* ((min (* (+ rock-radius radius) 10))
 	   (range (- (float space-field-size) min)))
       (rotate-v2
        (v! 0 (+ min (random range)))
@@ -544,7 +540,7 @@
 	     (ease (easing-f:out-cubic
 		    (setf (player-accel-ramp player)
 			  (min 1s0 (+ (player-accel-ramp player)
-				      (* 4 +fts+))))))
+				      (* +fts+ 0.4))))))
 	     (old-vel (player-key-up-vel player)))
 	(setf (player-decel-ramp player) 1s0)
 	(setf (player-key-down-vel player)
@@ -555,7 +551,7 @@
       (let* ((ease (easing-f:in-cubic
 		    (setf (player-decel-ramp player)
 			  (max 0s0 (- (player-decel-ramp player)
-				      +fts+)))))
+				      (* +fts+ 0.1))))))
 	     (old-vel (player-key-down-vel player)))
 	(setf (player-accel-ramp player) 0s0)
 	(setf (player-key-up-vel player)
@@ -588,8 +584,9 @@
 		   (bump player)
 		   (if (null stuck)
 		       (go-back-a-stage player *game-state*)
-		       (unless (eq a player)
-			 (detach-rock-from-player player a)))))))))))
+		       (if (eq a player)
+			   (detach-all-rocks-from-player player)
+			   (detach-rock-from-player player a)))))))))))
 
 (defun attach-rock-to-player (player rock stick-to)
   (symbol-macrolet ((stuck (player-stuck player)))
@@ -601,13 +598,18 @@
 	    stuck))
     (maybe-goto-next-stage player *game-state*)))
 
+(defun detach-all-rocks-from-player (player)
+  (let ((x (mapcar #'car (player-stuck player))))
+    (loop :for a :in x :do
+       (detach-rock-from-player player a))))
+
 (defun detach-rock-from-player (player rock)
   (symbol-macrolet ((stuck (player-stuck player))
 		    (vel (actoroid-velocity rock)))
     (let ((o (actor-offset player rock)))
       (setf (actoroid-invincible-for-seconds rock) 1s0)
       (setf stuck (remove rock stuck :key #'car)
-	    vel (v2:*s (v2:normalize (v! (y o) (x o))) 0.3))
+	    vel (v2:*s (v2:normalize (v! (y o) (x o))) (* 0.3 60)))
       (push rock *rocks*)))
   (remove-any-seperate-rocks))
 
