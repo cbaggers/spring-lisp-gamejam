@@ -1,4 +1,4 @@
-(in-package #:kepler)
+(in-package #:vacuum)
 (in-readtable fn:fn-reader)
 
 (defconstant +fps+ 60s0) ;; frames per second
@@ -129,6 +129,17 @@
     ;; these two fire off temporal lambdas
     (resize-player level stage)
     (when (player-stuck player) (remove-rocks player))
+    ;; End of game
+    (when (and (= level 4) (= stage 1))
+      (let ((z (zoom *camera*)))
+	(ttm:add
+	 (tlambda ()
+	   (then
+	     (before (seconds 3) nil)
+	     (before (seconds 6)
+	       (setf (zoom *camera*)
+		     (- z (* 2000s0 %progress%))))
+	     (once (reset-game 0 0)))))))
     ;; done
     player))
 
@@ -271,7 +282,7 @@
 (defun goto-next-stage (player game-state)
   (let ((last-level (game-state-level game-state))
 	(last-stage (game-state-stage game-state)))
-    (sdl2-mixer:play-channel -1 *grow-sound* 0)
+    (sdl2-mixer:play-channel 0 *grow-sound* 0)
     (dbind (level stage) (calc-next-stage last-level last-stage)
       ;; update the game state
       (setf (game-state-level game-state) level
@@ -279,31 +290,23 @@
       ;; update player
       (update-player-data player level stage)
       ;; check if we need to do fancy transition
-      (if (= stage 0)
-	  (ttm:add
-	   (tlambda ()
-	     (then
-	       (once (print "*Fancy Level Transition*"))
-	       (once (print "- ooh wasnt that nice -"))
-	       (once (setup-level level)))))
-	  (ttm:add
-	   (tlambda ()
-	     (then
-	       (once (print "*Fancy Stage Transition*"))
-	       (once (print "- ooh wasnt that nice -")))))))))
+      (when (= stage 0)
+	(ttm:add
+	 (tlambda ()
+	   (once (setup-level level))))))))
 
 (defun maybe-goto-next-stage (player game-state)
   (let ((ready (player-ready-for-next-stage-p player game-state)))
     ;;(break "~a ~a ~a" player (mass player) ready)
     (if ready
 	(goto-next-stage player game-state)
-	(sdl2-mixer:play-channel -1 *eat-sound* 0))))
+	(sdl2-mixer:play-channel 1 *eat-sound* 0))))
 
 (defun go-back-a-stage (player game-state)
   (let ((last-level (game-state-level game-state))
 	(last-stage (game-state-stage game-state)))
     (unless (= last-level last-stage 0)
-      (sdl2-mixer:play-channel -1 *shrink-sound* 0)
+      (sdl2-mixer:play-channel 2 *shrink-sound* 0)
       (dbind (level stage) (calc-last-stage last-level last-stage)
 	;; update the game state
 	(setf (game-state-level game-state) level
@@ -317,8 +320,6 @@
 	  (ttm:add
 	   (tlambda ()
 	     (then
-	       (once (print "*Aww going back transition*"))
-	       (once (print "- okidokey -"))
 	       (once (setup-level level))))))))))
 
 (defun pop-collected-rocks (player level)
@@ -331,7 +332,7 @@
 
 (defun bump (player)
   (when (<= (actoroid-invincible-for-seconds player) 0s0)
-    (sdl2-mixer:play-channel -1 *collision-sound* 0)
+    (sdl2-mixer:play-channel 3 *collision-sound* 0)
     (shake-cam)
     (setf (actoroid-invincible-for-seconds player) 0.5)))
 
@@ -698,11 +699,14 @@
   (update-particles *particle-system*)
   (ttm:update))
 
+(defun vacuum ()
+  (run-vacuum))
+
 (let ((running nil))
-  (defun run-kepler (&optional for-frames force-stepper)
+  (defun run-vacuum (&optional for-frames force-stepper)
     (assert (or (null for-frames) (numberp for-frames)))
     (unwind-protect
-	 (progn (format t "-kepler started-~%")
+	 (progn (format t "-vacuum started-~%")
 		(setf running t)
 		(let ((game-stepper (temporal-functions:make-stepper
 				     (seconds +spf+)))
@@ -720,16 +724,13 @@
 			   (when (or force-stepper (funcall repl-stepper))
 			     (update-repl-link))))))
       (setf running nil)
-      (format t "-kepler stopped-~%"))
+      (format t "-vacuum stopped-~%"))
     t)
-  (defun stop-kepler ()
+  (defun stop-vacuum ()
     (sdl2-mixer:halt-music)
     (setf running nil)))
 
 ;;----------------------------------------------------------------------
-
-(defun window-size-listener (event timestamp)
-  (format t "Window event ~s at ~s" event timestamp))
 
 (let ((last-timestamp 0))
   (defun mouse-listener (event timestamp)
@@ -761,7 +762,7 @@
 
 (defun reshape (new-dimensions)
   (let ((new-dimensions (v! (v:x new-dimensions) (v:y new-dimensions))))
-    (print new-dimensions)
+    ;;(print new-dimensions)
     (update-viewport-size *camera* (v! new-dimensions))))
 
 (defun window-size-callback (event timestamp)

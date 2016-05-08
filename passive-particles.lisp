@@ -1,4 +1,4 @@
-(in-package :kepler)
+(in-package :vacuum)
 (in-readtable fn:fn-reader)
 
 (defvar *particle-stream* nil)

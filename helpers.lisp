@@ -1,7 +1,7 @@
-(in-package :kepler)
+(in-package :vacuum)
 
 (defun path (x)
-  (asdf:system-relative-pathname :kepler (format nil "media/~a" x)))
+  (asdf:system-relative-pathname :vacuum (format nil "media/~a" x)))
 
 (defun nrgb (r g b)
   (v! (/ r 255.0)

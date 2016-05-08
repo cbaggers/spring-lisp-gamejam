@@ -1,9 +1,9 @@
-;;;; kepler.asd
+;;;; vacuum.asd
 
-(asdf:defsystem #:kepler
-  :description "Describe kepler here"
-  :author "Your Name <your.name@example.com>"
-  :license "Specify license here"
+(asdf:defsystem #:vacuum
+  :description "I dun a game :p"
+  :author "Baggers <techsnuffle@gmail.com>"
+  :license "GPL v3"
   :depends-on (#:cepl
                #:temporal-functions
                #:cepl.sdl2

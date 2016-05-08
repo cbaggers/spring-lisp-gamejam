@@ -1,4 +1,4 @@
-(in-package :kepler)
+(in-package :vacuum)
 
 (defparameter *ring-ratio* 1.3653333s0)
 (defparameter *corona-ratio* 1.4670488s0)
@@ -20,7 +20,7 @@
     ("asteroid_rgb.png" 4 0.97 25s0 (,(nrgb 107 56 22)
 				      ,(nrgb 220 135 25)
 				      ,(nrgb 253 221 107)))
-    ("rocky_planet_rgb.png" 30 0.97 50s0 (,(nrgb 107 56 22)
+    ("rocky_planet_rgb.png" 30 0.97 70s0 (,(nrgb 107 56 22)
 					   ,(nrgb 220 135 25)
 					   ,(nrgb 253 221 107)))))
 
@@ -30,7 +30,7 @@
     (30.0 34.0)
     (48.0 60.0 78.0)
     (280.0 320.0 400.0 690.0 710.0)
-    (2500.0)))
+    (2500.0 2500.0)))
 
 (defparameter *space-field-sizes*
   #(50s0
@@ -42,12 +42,12 @@
 (defparameter *player-journey*
   `(;; title screen
     ((:mote "star_01.png"
-	    :radius 1 :mass 2 :speed 20s0))
+	    :radius 0.5 :mass 2 :speed 20s0))
     ;; level 0
     ((:tiny-asteroid "asteroid_rgb.png"
 		     :radius 1 :mass 2 :speed 20s0)
      (:medium-asteroid "asteroid_rgb.png"
-		       :radius 2 :mass 6 :speed 60s0))
+		       :radius 1.6 :mass 6 :speed 60s0))
     ;; level 1
     ((:medium-asteroid "asteroid_rgb.png"
 		       :radius 2 :mass 10 :speed 60s0)
@@ -65,11 +65,11 @@
      (:gas-planet "jovian_rgb.png"
 		  :radius 64 :mass 20000 :speed 180s0)
      (:gas-giant "jovian_rgb.png"
-		 :radius 192 :mass 50000 :speed 180s0))
+		 :radius 192 :mass 100000 :speed 180s0))
 
     ;; level 3
     ((:small-star "sun_rgb.png"
-		  :radius 400 :mass 80000 :speed 550s0
+		  :radius 400 :mass 200000 :speed 550s0
 		  :flare (("corona_inner_rgb.png"
 			   1.4670488s0
 			   :rotation-speed 0.1)
@@ -77,7 +77,7 @@
 			   1.4670488s0
 			   :rotation-speed -0.1)))
      (:large-star "sun_rgb.png"
-		  :radius 600 :mass 180000 :speed 350s0
+		  :radius 1200 :mass 260000 :speed 350s0
 		  :flare (("corona_inner_rgb.png"
 			   1.4670488s0
 			   :rotation-speed 0.1)
