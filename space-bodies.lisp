@@ -69,7 +69,7 @@
 
     ;; level 3
     ((:small-star "sun_rgb.png"
-		  :radius 400 :mass 80000 :speed 350s0
+		  :radius 400 :mass 80000 :speed 550s0
 		  :flare (("corona_inner_rgb.png"
 			   1.4670488s0
 			   :rotation-speed 0.1)
@@ -210,21 +210,35 @@
 				,(nrgb 122 253 107))))))
 
     (;; level 3
-     (1 (:gas-planet "jovian_rgb.png"
-		     :radius 1.5 :mass 50000
-		     :speed 30
-		     :colors ((,(nrgb 107 56 22)
-				,(nrgb 220 135 25)
-				,(nrgb 253 221 107))
-			      (,(nrgb 23 22 107)
-				,(nrgb 144 25 220)
-				,(nrgb 56 240 241))
-			      (,(nrgb 107 22 70)
-				,(nrgb 220 25 103)
-				,(nrgb 253 107 134))
-			      (,(nrgb 63 107 22)
-				,(nrgb 87 220 25)
-				,(nrgb 122 253 107))))))))
+     (10 (:large-rocky-planet "rocky_planet_rgb.png"
+			      :radius 70 :mass 1000
+			      :speed 300
+			      :colors ((,(nrgb 39 61 55)
+					 ,(nrgb 97 175 175)
+					 ,(nrgb 183 233 96))
+				       (,(nrgb 53 39 61)
+					 ,(nrgb 170 97 175)
+					 ,(nrgb 96 192 233))
+				       (,(nrgb 61 48 39)
+					 ,(nrgb 175 159 97)
+					 ,(nrgb 219 181 33)))))
+     (100 (:gas-planet "jovian_rgb.png"
+		       :radius 200 :mass 2000
+		       :speed 80
+		       :flare (("rings_rgb.png" 1.3653333s0 :at-back nil))
+		       :flare-chance-in-% 60
+		       :colors ((,(nrgb 107 56 22)
+				  ,(nrgb 220 135 25)
+				  ,(nrgb 253 221 107))
+				(,(nrgb 23 22 107)
+				  ,(nrgb 144 25 220)
+				  ,(nrgb 56 240 241))
+				(,(nrgb 107 22 70)
+				  ,(nrgb 220 25 103)
+				  ,(nrgb 253 107 134))
+				(,(nrgb 63 107 22)
+				  ,(nrgb 87 220 25)
+				  ,(nrgb 122 253 107))))))))
 
 (defun player-stats (level stage)
   (elt (elt *player-journey* level) stage))

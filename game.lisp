@@ -431,7 +431,7 @@
 
 (defun draw-player (x)
   (declare (optimize debug))
-  (draw-flare x 0.5)
+  (draw-flare x 0.2)
   (map-g #'actor-replace-color-pipeline2
 	 (actoroid-stream x)
 	 :ymod 0.1
