@@ -411,7 +411,7 @@
 	 :falloff *nebula-falloff*)
   (draw-flare x ymod))
 
-(defun draw-flare (x &optional (ymod 0s0))
+(defun draw-flare (x &optional (ymod 0s0) (ymod-inc -0.01))
   (loop :for flare :in (actoroid-flare x) :do
     (with-slots (tex ratio at-back-p rot rotatation-speed) flare
       (map-g #'actor-replace-color-pipeline
@@ -426,10 +426,12 @@
 	     :gcol (aref (actoroid-colors x) 1)
 	     :bcol (aref (actoroid-colors x) 2)
 	     :field-size (field-size)
-	     :falloff *nebula-falloff*))))
+	     :falloff *nebula-falloff*)
+      (incf ymod ymod-inc))))
 
 (defun draw-player (x)
   (declare (optimize debug))
+  (draw-flare x 0.5)
   (map-g #'actor-replace-color-pipeline2
 	 (actoroid-stream x)
 	 :ymod 0.1
@@ -443,8 +445,7 @@
 	 :bcol (aref (actoroid-colors x) 2)
 	 :neg-alpha (if (> (actoroid-invincible-for-seconds x) 0.0)
 			(+ 0.5 (/ (sin (* 30 (actoroid-invincible-for-seconds x))) 2))
-			0s0))
-  (draw-flare x))
+			0s0)))
 
 (defun draw-stuck (x &optional (ymod 0s0))
   (declare (optimize debug))
