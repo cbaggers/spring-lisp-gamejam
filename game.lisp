@@ -534,6 +534,8 @@
 	      (v2:*s (actoroid-velocity player) (* 0.95 +fts+))))
   (when (skitter:key-down-p key.escape)
     (reset-game 0 0))
+  (when (skitter:key-down-p key.q)
+    (stop-vacuum))
   ;; accelerate when mouse down
   (if (skitter:mouse-down-p mouse.left)
       ;; accelerate
