@@ -1,7 +1,11 @@
 (in-package :vacuum)
 
 (defun path (x)
-  (asdf:system-relative-pathname :vacuum (format nil "media/~a" x)))
+  (if swank::*connections*
+      (asdf:system-relative-pathname :vacuum (format nil "media/~a" x))
+      (merge-pathnames
+	 (format nil "media/~a" x)
+	 (directory-namestring (first sb-ext:*posix-argv*)))))
 
 (defun nrgb (r g b)
   (v! (/ r 255.0)
@@ -64,3 +68,7 @@
   (or (gethash path *cached-textures*)
       (setf (gethash path *cached-wavs*)
 	    (sdl2-mixer:load-wav (path path)))))
+
+(defun vec2->angle (vec2)
+  (+ (atan (y vec2) (x vec2))
+     (/ +pi+ 2)))

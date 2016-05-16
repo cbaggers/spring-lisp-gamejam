@@ -22,6 +22,7 @@
 (defvar *shrink-sound* nil)
 (defvar *collision-sound* nil)
 (defvar *logo* nil)
+(defvar *current-nebula-size* 0s0)
 (defvar *temporal-draw-funcs* (ttm:make-tfunc-pool))
 
 (defun init ()
@@ -111,6 +112,7 @@
 (defun update-player-data (player level stage)
   (dbind (_ tex &key mass speed flare &allow-other-keys) (player-stats level stage)
     (declare (ignore _))
+
     (setf (player-texture player) (load-texture tex))
     (setf (player-max-speed player) speed)
     (setf (actoroid-mass player) mass)
@@ -218,39 +220,45 @@
   ;; {TODO} for now just dump *rocks*, later animate this
   (setf *rocks*
 	(loop :for (count spec) :in (stage-bodies-spec level) :append
-	   (loop :for i :below count :collect (spec->rock level spec)))))
+	   (loop :for i :below count :collect (spec->rock level spec))))
+  (let ((last-neb-size *current-nebula-size*))
+    (ttm:add
+     (tlambda ()
+       (before (seconds 1.8)
+	 (setf *current-nebula-size*
+	       (+ last-neb-size
+		  (* (- (field-size) last-neb-size)
+		     (easing-f:linear %progress%)))))))))
 
 (defun spec->rock (level spec)
-  (let ((space-field-size (elt *space-field-sizes* level))
-	(rand-rotation (random (* +pi+ 2))))
+  (let ((space-field-size (elt *space-field-sizes* level)))
     (dbind (name tex &key radius mass colors speed rotation
 		 flare flare-chance-in-%) spec
-      (make-actoroid
-       :kind name
-       :texture (if (sampler-p tex)
-		    tex
-		    (load-texture tex))
-       :colors (when colors (make-array
-			     3 :initial-contents
-			     (alexandria:random-elt colors)))
-       :position (calc-starting-pos radius space-field-size
-				    level 0)
-       :velocity (rotate-v2
-		  (v! 0 (parse-speed speed))
-		  rand-rotation)
-       :rotation (- (or rotation 0s0) rand-rotation)
-       :mass mass
-       :radius radius
-       :flare (when (and flare (< (random 100s0) flare-chance-in-%))
-		(loop :for f :in flare :collect
-		   (dbind (tex ratio &key (at-back t)
-			       (rot-speed 0s0)) f
-		     (make-instance
-		      'flare
-		      :tex (load-texture tex)
-		      :ratio ratio
-		      :at-back at-back
-		      :rotation-speed rot-speed))))))))
+      (let ((vel (parse-speed speed)))
+	(make-actoroid
+	 :kind name
+	 :texture (if (sampler-p tex)
+		      tex
+		      (load-texture tex))
+	 :colors (when colors (make-array
+			       3 :initial-contents
+			       (alexandria:random-elt colors)))
+	 :position (calc-starting-pos radius space-field-size
+				      level 0)
+	 :velocity vel
+	 :rotation (+ +pi+ (- (vec2->angle vel) (or rotation 0s0)))
+	 :mass mass
+	 :radius radius
+	 :flare (when (and flare (< (random 100s0) flare-chance-in-%))
+		  (loop :for f :in flare :collect
+		     (dbind (tex ratio &key (at-back t)
+				 (rot-speed 0s0)) f
+		       (make-instance
+			'flare
+			:tex (load-texture tex)
+			:ratio ratio
+			:at-back at-back
+			:rotation-speed rot-speed)))))))))
 
 (defun rock->spec (rock)
   (let ((speed (* (v2:length (actoroid-velocity rock)) 2))
@@ -503,7 +511,7 @@
 	 :nebula *nebula-tex*
 	 :player-pos (actoroid-position *player*)
 	 :cam (camera-ubo *camera*)
-	 :field-size (field-size)
+	 :field-size *current-nebula-size*
 	 :nebula-falloff *nebula-falloff*))
 
 (defun-g splat-vert ((vert g-pt))
@@ -661,12 +669,12 @@
       (draw-passive-particles *particle-system* *camera* *dust-tex*)
       ;;
       (when *rocks*
-	(let* ((min 0.3) (max 0.4) (range (- max min))
+	(let* ((min 0.4) (max 0.5) (range (- max min))
 	      (mult (/ range (length *rocks*))))
 	 (loop :for a :in *rocks* :for i :from 0 :do
 	    (draw-actor a (- max (* i mult)))))
 	;;
-	(let* ((min 0.4) (max 0.5) (range (- max min))
+	(let* ((min 0.3) (max 0.4) (range (- max min))
 	       (mult (/ range (length *rocks*))))
 	  (loop :for s :in (player-stuck *player*) :for i :from 0 :do
 	     (draw-stuck (car s) (- max (* i mult))))))

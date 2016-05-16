@@ -90,7 +90,6 @@
     ;; end of demo
     ))
 
-
 (defparameter *bodies*
   `(;; title screen
     nil
@@ -121,10 +120,10 @@
 				    ,(nrgb 95 122 150)
 				    ,(nrgb 140 196 255)))))
      ;;(:medium-asteroid "" 5)
-     (50 (:comet "comet_rgb.png"
+     (40 (:comet "comet_rgb.png"
 		 :radius 1.5 :mass 28
 		 :rotation ,(/ +pi+ 2)
-		 :speed (22 . 30)
+		 :speed (20 . 37)
 		 :colors ((,(nrgb 9 83 145)
 			    ,(nrgb 94 224 238)
 			    ,(nrgb 210 255 253))
