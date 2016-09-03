@@ -60,6 +60,7 @@
 
     ;; input
     (skitter:listen-to λ(mouse-listener _ _1) (skitter:mouse 0) :pos)
+    (skitter:listen-to λ(system-listener _ _1) skitter:+system+ :quitting)
     (skitter:listen-to λ(window-size-callback _ _1) (skitter:window 0) :size)
 
     ;; media
@@ -723,9 +724,8 @@
 		      (repl-stepper (temporal-functions:make-stepper
 				     (seconds (/ 1.0 10.0)))))
 		  (init)
-		  (loop :while (and running
-				    (not (shutting-down-p))
-				    (if for-frames (>= (decf for-frames) 0) t))
+		  (loop :while (and running (not (shutting-down-p))
+                            (if for-frames (>= (decf for-frames) 0) t))
 		     :do (continuable
 			   (cepl:step-host)
 			   (when (or force-stepper (funcall game-stepper))
@@ -754,6 +754,11 @@
 		  (- a)
 		  a)))
       (setf (actoroid-rotation *player*) (- a)))))
+
+(defun system-listener (event timestamp)
+  (declare (ignore event timestamp))
+  (stop-vacuum))
+
 
 ;;----------------------------------------------------------------------
 

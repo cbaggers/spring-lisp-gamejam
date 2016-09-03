@@ -9,7 +9,8 @@ This is the start of an ambient game, it needs a lot of love but it gets the ide
 - at least GL 3.3
 - sdl2 (libsdl2-2.0-0)
 - sdl2-mixer (libsdl2-mixer-2.0-0)
-- libdevil (libdevil1c2 or libdevil-dev on debian)
+- dirt
+- cl-soil
 
 ## Notes
 

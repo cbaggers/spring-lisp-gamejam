@@ -10,15 +10,17 @@
                #:swank
                #:livesupport
                #:cepl.skitter.sdl2
-               #:cepl.devil
-	       #:structy-defclass
-	       #:dendrite
-	       #:easing
-	       #:sdl2-mixer)
+               #:dirt
+               #:structy-defclass
+               #:dendrite
+               #:easing
+               #:sdl2-mixer
+               #:shipshape)
   :serial t
   :components ((:file "package")
-	       (:file "helpers")
-	       (:file "types")
-	       (:file "passive-particles")
-	       (:file "space-bodies")
-               (:file "game")))
+               (:file "helpers")
+               (:file "types")
+               (:file "passive-particles")
+               (:file "space-bodies")
+               (:file "game")
+               (:file "shipping")))

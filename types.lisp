@@ -43,7 +43,7 @@
 (deftclass (player (:include actoroid)
 		   (:constructor %make-player))
   (texture
-   (sample (cepl.devil:load-image-to-texture (path "jovian_rgb.png")))
+   (sample (dirt:load-image-to-texture (path "jovian_rgb.png")))
    :type sampler)
   (stuck nil :type list)
   (accel-ramp 0s0 :type single-float)

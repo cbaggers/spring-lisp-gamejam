@@ -1,11 +1,7 @@
 (in-package :vacuum)
 
 (defun path (x)
-  (if swank::*connections*
-      (asdf:system-relative-pathname :vacuum (format nil "media/~a" x))
-      (merge-pathnames
-	 (format nil "media/~a" x)
-	 (directory-namestring (first sb-ext:*posix-argv*)))))
+  (local-path x :vacuum))
 
 (defun nrgb (r g b)
   (v! (/ r 255.0)
@@ -35,7 +31,8 @@
 ;; gpu helpers
 
 (defun make-gpu-quad ()
-  (dbind (v i) (dendrite.primitives:plain-data :normals nil)
+  (dbind (v i) (dendrite.primitives:plain-data
+                :width 2s0 :height 2s0 :normals nil)
     (make-buffer-stream
      (make-gpu-array v :element-type 'g-pt)
      :index-array (make-gpu-array i :element-type :ushort)
@@ -53,7 +50,7 @@
 (defun load-texture (path)
   (or (gethash path *cached-textures*)
       (setf (gethash path *cached-textures*)
-	    (sample (cepl.devil:load-image-to-texture (path path))))))
+	    (sample (dirt:load-image-to-texture (path path))))))
 
 (defparameter *cached-ogg* (make-hash-table :test #'equal))
 

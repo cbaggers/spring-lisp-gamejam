@@ -1,4 +1,9 @@
-*.FASL
+*~
 *.fasl
-*.lisp-temp
-*.bin
+*.FASL
+*.~lock*
+\#*\#
+*.fas
+*.dx64fsl
+*.lx64fsl
+*.DS_Store
